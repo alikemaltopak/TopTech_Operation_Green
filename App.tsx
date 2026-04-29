@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { NavTab, GardenStatus, Land, WeatherCondition, ForecastDay, IrrigationSession } from './types';
+import { subscribeToLands, subscribeToHistory, addHistorySession, addLand } from './lib/db';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
 import Navigation from './components/Navigation';
@@ -37,11 +38,8 @@ const App: React.FC = () => {
   const [historySessions, setHistorySessions] = useState<IrrigationSession[]>([]);
   const currentSessionRef = useRef<{ startTime: Date; landId: string; landName: string } | null>(null);
 
-  const [lands, setLands] = useState<Land[]>([
-    { id: '1', name: 'Zeytinlik', location: 'Muğla, Milas', sensorCount: 4, image: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&q=80&w=600', coordinates: '37.3167, 27.7833' },
-    { id: '2', name: 'Arka Bahçe', location: 'İstanbul, Beykoz', sensorCount: 2, image: 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&q=80&w=600', coordinates: '41.1333, 29.1000' },
-  ]);
-  const [selectedLandId, setSelectedLandId] = useState<string>('1');
+  const [lands, setLands] = useState<Land[]>([]);
+  const [selectedLandId, setSelectedLandId] = useState<string>('');
 
   const [status, setStatus] = useState<GardenStatus>({
     moisture: 65,
@@ -65,6 +63,29 @@ const App: React.FC = () => {
     if (storedUser) setUser(JSON.parse(storedUser));
     setIsInitializing(false);
   }, []);
+
+  // Firebase DB Subscriptions
+  useEffect(() => {
+    if (!user?.email) return;
+
+    const unsubscribeLands = subscribeToLands(user.email, (fetchedLands) => {
+      setLands(fetchedLands);
+      setSelectedLandId(prev => {
+        if (!prev && fetchedLands.length > 0) return fetchedLands[0].id;
+        if (prev && fetchedLands.length > 0 && !fetchedLands.find(l => l.id === prev)) return fetchedLands[0].id;
+        return prev;
+      });
+    });
+
+    const unsubscribeHistory = subscribeToHistory(user.email, (fetchedSessions) => {
+      setHistorySessions(fetchedSessions);
+    });
+
+    return () => {
+      unsubscribeLands();
+      unsubscribeHistory();
+    };
+  }, [user]);
 
   const handleLogin = (userData: any) => {
     setUser(userData);
@@ -168,8 +189,7 @@ const App: React.FC = () => {
           const minutes = Math.floor(totalSeconds / 60);
           const seconds = totalSeconds % 60;
           
-          const newSession: IrrigationSession = {
-            id: Date.now().toString(),
+          const newSession = {
             landId: currentSessionRef.current.landId,
             landName: currentSessionRef.current.landName,
             date: now.toISOString().split('T')[0],
@@ -180,14 +200,16 @@ const App: React.FC = () => {
             icon: 'water_drop'
           };
           
-          setHistorySessions(prevSessions => [newSession, ...prevSessions]);
+          if (user?.email) {
+            addHistorySession(user.email, newSession).catch(console.error);
+          }
           currentSessionRef.current = null;
         }
       }
       
       return { ...prev, isIrrigating: starting };
     });
-  }, [selectedLandId, lands]);
+  }, [selectedLandId, lands, user]);
 
   const handleUpdateSchedule = useCallback((time: string, day: string) => {
     setStatus(prev => ({ ...prev, nextSchedule: time, nextScheduleDay: day }));
@@ -197,10 +219,16 @@ const App: React.FC = () => {
     setStatus(prev => ({ ...prev, isScheduleActive: !prev.isScheduleActive }));
   }, []);
 
-  const handleAddLand = (newLand: Land) => {
-    setLands(prev => [...prev, newLand]);
-    setSelectedLandId(newLand.id);
-    setActiveTab(NavTab.PANEL);
+  const handleAddLand = async (newLand: Land) => {
+    if (!user?.email) return;
+    try {
+      const { id, ...landData } = newLand;
+      const newId = await addLand(user.email, landData as any);
+      setSelectedLandId(newId);
+      setActiveTab(NavTab.PANEL);
+    } catch (e) {
+      console.error("Error adding land:", e);
+    }
   };
 
   const handleSelectLand = (id: string) => {
