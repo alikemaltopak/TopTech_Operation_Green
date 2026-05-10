@@ -11,6 +11,12 @@ interface LandsViewProps {
   onSelectLand: (id: string) => void;
 }
 
+const defaultImages = [
+  '/lands/land_field.png',
+  '/lands/olive_grove.png',
+  '/lands/modern_greenhouse.png'
+];
+
 const LandsView: React.FC<LandsViewProps> = ({ lands, selectedLandId, onAddLand, onUpdateLand, onSelectLand }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLandId, setEditingLandId] = useState<string | null>(null);
@@ -81,14 +87,24 @@ const LandsView: React.FC<LandsViewProps> = ({ lands, selectedLandId, onAddLand,
       </div>
 
       <div className="flex flex-col gap-4">
-        {lands.map((land) => (
+        {lands.map((land, index) => (
           <div 
             key={land.id} 
             onClick={() => onSelectLand(land.id)}
             className={`group relative overflow-hidden rounded-3xl border ${selectedLandId === land.id ? 'border-primary ring-2 ring-primary/20' : 'border-border-light dark:border-border-dark'} bg-surface-light dark:bg-surface-dark shadow-lg active:scale-[0.98] transition-all cursor-pointer`}
           >
             <div className="h-40 w-full relative">
-              <img src={land.image} alt={land.name} className="w-full h-full object-cover brightness-75 group-hover:scale-105 transition-transform duration-700" />
+              <img 
+                src={land.image || defaultImages[index % defaultImages.length]} 
+                alt={land.name} 
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  if (!target.src.includes(defaultImages[index % defaultImages.length])) {
+                    target.src = defaultImages[index % defaultImages.length];
+                  }
+                }}
+                className="w-full h-full object-cover brightness-75 group-hover:scale-105 transition-transform duration-700" 
+              />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
               
               <div className="absolute bottom-4 left-5 right-5 flex justify-between items-end">
