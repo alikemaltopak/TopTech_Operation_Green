@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { motion } from 'motion/react';
 import { WeatherCondition } from '../types';
 
 interface WeatherHeroProps {
@@ -16,7 +17,11 @@ const WeatherHero: React.FC<WeatherHeroProps> = ({ condition, temperature }) => 
           label: 'Güneşli',
           color: 'text-yellow-400',
           glow: 'shadow-[0_0_50px_rgba(250,204,21,0.3)]',
-          bg: 'bg-yellow-400/10'
+          bg: 'bg-yellow-400/10',
+          animationProps: {
+            animate: { rotate: 360 },
+            transition: { duration: 12, ease: "linear", repeat: Infinity }
+          }
         };
       case 'Rainy':
         return {
@@ -24,7 +29,11 @@ const WeatherHero: React.FC<WeatherHeroProps> = ({ condition, temperature }) => 
           label: 'Yağmurlu',
           color: 'text-blue-400',
           glow: 'shadow-[0_0_50px_rgba(96,165,250,0.3)]',
-          bg: 'bg-blue-400/10'
+          bg: 'bg-blue-400/10',
+          animationProps: {
+            animate: { y: [0, -5, 0] },
+            transition: { duration: 2, ease: "easeInOut", repeat: Infinity }
+          }
         };
       case 'PartlyCloudy':
         return {
@@ -32,7 +41,11 @@ const WeatherHero: React.FC<WeatherHeroProps> = ({ condition, temperature }) => 
           label: 'Parçalı Bulutlu',
           color: 'text-slate-300',
           glow: 'shadow-[0_0_50px_rgba(203,213,225,0.2)]',
-          bg: 'bg-slate-300/10'
+          bg: 'bg-slate-300/10',
+          animationProps: {
+            animate: { x: [-3, 3, -3] },
+            transition: { duration: 4, ease: "easeInOut", repeat: Infinity }
+          }
         };
       case 'Cloudy':
       default:
@@ -41,7 +54,11 @@ const WeatherHero: React.FC<WeatherHeroProps> = ({ condition, temperature }) => 
           label: 'Bulutlu',
           color: 'text-slate-400',
           glow: 'shadow-[0_0_50px_rgba(148,163,184,0.2)]',
-          bg: 'bg-slate-400/10'
+          bg: 'bg-slate-400/10',
+          animationProps: {
+            animate: { scale: [1, 1.05, 1] },
+            transition: { duration: 4, ease: "easeInOut", repeat: Infinity }
+          }
         };
     }
   };
@@ -51,9 +68,12 @@ const WeatherHero: React.FC<WeatherHeroProps> = ({ condition, temperature }) => 
   return (
     <div className={`relative flex flex-col items-center justify-center w-64 h-64 rounded-full border-4 border-border-light dark:border-surface-dark transition-all duration-700 ${config.bg} ${config.glow}`}>
       <div className="text-center z-10 animate-in zoom-in duration-1000">
-        <span className={`material-symbols-outlined text-6xl mb-2 transition-colors duration-700 ${config.color} scale-125`}>
+        <motion.span 
+          {...config.animationProps}
+          className={`material-symbols-outlined text-6xl mb-2 transition-colors duration-700 ${config.color} scale-125 block`}
+        >
           {config.icon}
-        </span>
+        </motion.span>
         <div className="text-5xl font-extrabold text-slate-900 dark:text-white tracking-tighter mt-1">
           {temperature}°C
         </div>

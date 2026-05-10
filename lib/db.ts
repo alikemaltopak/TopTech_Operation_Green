@@ -1,18 +1,25 @@
-import { collection, doc, addDoc, updateDoc, deleteDoc, query, orderBy, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, setDoc, addDoc, updateDoc, deleteDoc, query, orderBy, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { db } from './firebase';
 import { Land, IrrigationSession } from '../types';
-
-const APP_ID = 'remote-irrigation-app';
 
 // Helper to get collection path
 const getLandsCollectionPath = (email: string) => {
   const userId = email.replaceAll('.', '_').replaceAll('@', '_');
-  return `artifacts/${APP_ID}/users/${userId}/lands`;
+  return `users/${userId}/lands`;
 };
 
 const getHistoryCollectionPath = (email: string) => {
   const userId = email.replaceAll('.', '_').replaceAll('@', '_');
-  return `artifacts/${APP_ID}/users/${userId}/history`;
+  return `users/${userId}/history`;
+};
+
+export const updateUserDocument = async (email: string) => {
+  const userId = email.replaceAll('.', '_').replaceAll('@', '_');
+  const userRef = doc(db, 'users', userId);
+  await setDoc(userRef, {
+    email,
+    lastLogin: serverTimestamp()
+  }, { merge: true });
 };
 
 export const addLand = async (email: string, land: Omit<Land, 'id'>) => {
@@ -24,11 +31,10 @@ export const addLand = async (email: string, land: Omit<Land, 'id'>) => {
   return docRef.id;
 };
 
-export const updateLand = async (email: string, land: Land) => {
+export const updateLand = async (email: string, landId: string, updates: Partial<Land>) => {
   const path = getLandsCollectionPath(email);
-  const landRef = doc(db, path, land.id);
-  const { id, ...data } = land;
-  await updateDoc(landRef, data as any);
+  const landRef = doc(db, path, landId);
+  await updateDoc(landRef, updates as any);
 };
 
 export const deleteLand = async (email: string, landId: string) => {

@@ -6,7 +6,7 @@ import Modal from './Modal';
 interface LandsViewProps {
   lands: Land[];
   selectedLandId: string;
-  onAddLand: (land: Land) => void;
+  onAddLand: (land: Land) => Promise<void>;
   onSelectLand: (id: string) => void;
 }
 
@@ -18,7 +18,7 @@ const LandsView: React.FC<LandsViewProps> = ({ lands, selectedLandId, onAddLand,
     coordinates: ''
   });
 
-  const handleAddLand = (e: React.FormEvent) => {
+  const handleAddLand = async (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.name) {
       const newLand: Land = {
@@ -30,9 +30,13 @@ const LandsView: React.FC<LandsViewProps> = ({ lands, selectedLandId, onAddLand,
         phoneNumber: formData.phone,
         coordinates: formData.coordinates
       };
-      onAddLand(newLand);
-      setFormData({ name: '', phone: '', coordinates: '' });
-      setIsModalOpen(false);
+      try {
+        await onAddLand(newLand);
+        setFormData({ name: '', phone: '', coordinates: '' });
+        setIsModalOpen(false);
+      } catch (error: any) {
+        alert("Arazi kaydedilemedi. Lütfen veritabanı izinlerinizi kontrol edin.");
+      }
     }
   };
 

@@ -1,7 +1,10 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { NavTab, GardenStatus, Land, WeatherCondition, ForecastDay, IrrigationSession } from './types';
-import { subscribeToLands, subscribeToHistory, addHistorySession, addLand } from './lib/db';
+import { subscribeToLands, subscribeToHistory, addHistorySession, addLand, updateUserDocument, updateLand } from './lib/db';
+import { auth, storage } from './lib/firebase';
+import { onAuthStateChanged, signOut, updateProfile } from 'firebase/auth';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
 import Navigation from './components/Navigation';
@@ -10,25 +13,68 @@ import HistoryView from './components/HistoryView';
 import WeatherView from './components/WeatherView';
 import Modal from './components/Modal';
 import LoginView from './components/LoginView';
+import AppIntro from './components/AppIntro';
 
 const App: React.FC = () => {
+  const [showIntro, setShowIntro] = useState(false);
   const [activeTab, setActiveTab] = useState<NavTab>(NavTab.PANEL);
   const [user, setUser] = useState<any>(null); // Firebase user
   const [isInitializing, setIsInitializing] = useState(true);
   const [isDeviceInfoModalOpen, setIsDeviceInfoModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const [isThemesModalOpen, setIsThemesModalOpen] = useState(false);
+  const [theme, setTheme] = useState<string>(() => {
     const saved = localStorage.getItem('toptech_theme');
-    return (saved as 'light' | 'dark') || 'dark';
+    return saved || 'dark';
   });
   
   // Theme effect
   useEffect(() => {
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
+    const root = document.documentElement;
+    const body = document.body;
+    // For non-light themes, we default to adding 'dark' so the UI text remains visible, unless we specifically want light mode behavior.
+    // It's safer to consider all photo themes 'dark' or 'light' depending on their texture, but we'll default them to 'dark' for now.
+    if (theme === 'dark' || theme !== 'light') {
+      root.classList.add('dark');
     } else {
-      document.documentElement.classList.remove('dark');
+      root.classList.remove('dark');
     }
+    
+    // Clear previous dynamic background
+    body.style.backgroundImage = '';
+    body.style.backgroundSize = '';
+    body.style.backgroundAttachment = '';
+    body.style.backgroundPosition = '';
+    
+    const themeImages: Record<string, string> = {
+      'tas': '/themes/taş.png',
+      'mermer': '/themes/mermer.png',
+      'tahta': '/themes/tahta.png',
+      'obsidyen': '/themes/obsidyen.png',
+      'kilim': '/themes/kilim.png',
+      'beton': '/themes/beton.png',
+      'cini': '/themes/çini.png',
+      'garden': '/themes/garden.png',
+      'silver': '/themes/silver.png'
+    };
+    
+    if (themeImages[theme]) {
+      // Set properties for the texture effect inside components
+      root.classList.add('theme-textured');
+      root.style.setProperty('--theme-img', `url("${themeImages[theme]}")`);
+      
+      // Keep background clean as requested, or very subtle
+      body.style.backgroundImage = ''; 
+    } else {
+      root.classList.remove('theme-textured');
+      root.style.removeProperty('--theme-img');
+      body.style.backgroundImage = '';
+    }
+
     localStorage.setItem('toptech_theme', theme);
   }, [theme]);
 
@@ -36,7 +82,7 @@ const App: React.FC = () => {
     setTheme(prev => prev === 'dark' ? 'light' : 'dark');
   };
   const [historySessions, setHistorySessions] = useState<IrrigationSession[]>([]);
-  const currentSessionRef = useRef<{ startTime: Date; landId: string; landName: string } | null>(null);
+  const currentSessionRef = useRef<{ startTime: Date; landId: string; landName: string; durationMinutes?: number } | null>(null);
 
   const [lands, setLands] = useState<Land[]>([]);
   const [selectedLandId, setSelectedLandId] = useState<string>('');
@@ -57,12 +103,40 @@ const App: React.FC = () => {
     forecast: []
   });
 
-  // Simulation of persistent login
+  // Firebase Auth listener
   useEffect(() => {
-    const storedUser = localStorage.getItem('toptech_user');
-    if (storedUser) setUser(JSON.parse(storedUser));
-    setIsInitializing(false);
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser?.email) {
+        setUser({ email: firebaseUser.email, photoURL: firebaseUser.photoURL });
+        updateUserDocument(firebaseUser.email).catch(console.error);
+      } else {
+        setUser(null);
+      }
+      setIsInitializing(false);
+    });
+    return () => unsubscribe();
   }, []);
+
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user?.email || !auth.currentUser) return;
+    
+    try {
+      setIsUploadingPhoto(true);
+      const storageRef = ref(storage, `profiles/${user.email}_${Date.now()}`);
+      await uploadBytes(storageRef, file);
+      const downloadURL = await getDownloadURL(storageRef);
+      
+      await updateProfile(auth.currentUser, { photoURL: downloadURL });
+      setUser((prev: any) => ({ ...prev, photoURL: downloadURL }));
+      alert("Profil fotoğrafı başarıyla güncellendi!");
+    } catch (error) {
+      console.error("Fotoğraf yükleme hatası:", error);
+      alert("Fotoğraf yüklenirken bir hata oluştu. Lütfen tekrar deneyin.");
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
 
   // Firebase DB Subscriptions
   useEffect(() => {
@@ -88,13 +162,12 @@ const App: React.FC = () => {
   }, [user]);
 
   const handleLogin = (userData: any) => {
-    setUser(userData);
-    localStorage.setItem('toptech_user', JSON.stringify({ email: userData }));
+    // onAuthStateChanged will handle setting the user, but we want to show intro
+    setShowIntro(true);
   };
 
-  const handleLogout = () => {
-    setUser(null);
-    localStorage.removeItem('toptech_user');
+  const handleLogout = async () => {
+    await signOut(auth);
     setIsProfileModalOpen(false);
   };
 
@@ -166,20 +239,32 @@ const App: React.FC = () => {
     return () => clearInterval(interval);
   }, [user]);
 
-  const handleStartIrrigation = useCallback(() => {
+  const handleStartIrrigation = useCallback((minutes?: number) => {
     const activeLand = lands.find(l => l.id === selectedLandId);
     
     setStatus(prev => {
       const starting = !prev.isIrrigating;
       
       if (starting) {
+        if (activeLand?.phoneNumber) {
+          const command = minutes ? `ON${minutes}` : "ON";
+          const smsUri = `sms:${activeLand.phoneNumber}?body=${encodeURIComponent(command)}`;
+          window.location.href = smsUri;
+        }
+
         // Record start time
         currentSessionRef.current = {
           startTime: new Date(),
           landId: selectedLandId,
-          landName: activeLand?.name || "Bilinmeyen Arazi"
+          landName: activeLand?.name || "Bilinmeyen Arazi",
+          durationMinutes: minutes
         };
       } else {
+        if (activeLand?.phoneNumber) {
+          const smsUri = `sms:${activeLand.phoneNumber}?body=OFF`;
+          window.location.href = smsUri;
+        }
+
         // Record end time and create session
         if (currentSessionRef.current) {
           const now = new Date();
@@ -226,8 +311,19 @@ const App: React.FC = () => {
       const newId = await addLand(user.email, landData as any);
       setSelectedLandId(newId);
       setActiveTab(NavTab.PANEL);
-    } catch (e) {
+    } catch (e: any) {
       console.error("Error adding land:", e);
+      throw e;
+    }
+  };
+
+  const handleUpdateLand = async (landId: string, updates: Partial<Land>) => {
+    if (!user?.email) return;
+    try {
+      await updateLand(user.email, landId, updates);
+    } catch (e: any) {
+      console.error("Error updating land:", e);
+      throw e;
     }
   };
 
@@ -235,6 +331,8 @@ const App: React.FC = () => {
     setSelectedLandId(id);
     setActiveTab(NavTab.PANEL);
   };
+
+  const handleIntroComplete = useCallback(() => setShowIntro(false), []);
 
   if (isInitializing) {
     return (
@@ -251,12 +349,17 @@ const App: React.FC = () => {
   const activeLand = lands.find(l => l.id === selectedLandId);
 
   return (
-    <div className="flex flex-col min-h-screen pb-24 relative">
+    <>
+      {showIntro && <AppIntro onComplete={handleIntroComplete} />}
+      
+      {!showIntro && (
+        <div className="flex flex-col min-h-screen pb-24 relative animate-in fade-in duration-1000">
       <Header 
         isOnline={status.isOnline} 
         onProfileClick={() => setIsProfileModalOpen(true)}
         theme={theme}
         onThemeToggle={toggleTheme}
+        userPhotoURL={user?.photoURL}
       />
       
       <main className="flex-1 max-w-md mx-auto w-full px-4 overflow-x-hidden">
@@ -267,6 +370,7 @@ const App: React.FC = () => {
             onIrrigate={handleStartIrrigation} 
             onUpdateSchedule={handleUpdateSchedule}
             onToggleSchedule={handleToggleSchedule}
+            currentSession={currentSessionRef.current}
           />
         )}
         
@@ -290,6 +394,7 @@ const App: React.FC = () => {
             lands={lands} 
             selectedLandId={selectedLandId}
             onAddLand={handleAddLand}
+            onUpdateLand={handleUpdateLand}
             onSelectLand={handleSelectLand}
           />
         )}
@@ -382,6 +487,16 @@ const App: React.FC = () => {
                   </div>
                   <span className="material-symbols-outlined text-slate-400">chevron_right</span>
                 </button>
+                <button 
+                  onClick={() => setIsThemesModalOpen(true)}
+                  className="flex items-center justify-between p-4 bg-surface-light dark:bg-surface-dark rounded-2xl border border-border-light dark:border-border-dark hover:border-primary/50 transition-all shadow-sm"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="material-symbols-outlined text-slate-500">palette</span>
+                    <span className="font-bold text-sm">Temalar</span>
+                  </div>
+                  <span className="material-symbols-outlined text-slate-400">chevron_right</span>
+                </button>
               </div>
             </div>
           </div>
@@ -397,9 +512,49 @@ const App: React.FC = () => {
         <div className="flex flex-col items-center gap-6">
           <div className="relative">
             <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full scale-125"></div>
-            <div className="h-24 w-24 rounded-3xl bg-slate-100 dark:bg-surface-dark border-2 border-primary/40 flex items-center justify-center relative z-10">
-              <span className="material-symbols-outlined text-primary text-6xl">account_circle</span>
+            <div className="h-24 w-24 rounded-3xl bg-slate-100 dark:bg-surface-dark border-2 border-primary/40 flex items-center justify-center relative z-10 overflow-hidden">
+              {isUploadingPhoto ? (
+                <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+              ) : user?.photoURL ? (
+                <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              ) : (
+                <span className="material-symbols-outlined text-primary text-6xl">account_circle</span>
+              )}
             </div>
+          </div>
+
+          <div className="flex gap-3 mt-[-10px] z-10">
+            <input 
+              type="file" 
+              accept="image/*" 
+              ref={fileInputRef} 
+              className="hidden" 
+              onChange={handlePhotoUpload} 
+            />
+            <input 
+              type="file" 
+              accept="image/*" 
+              capture="user"
+              ref={cameraInputRef} 
+              className="hidden" 
+              onChange={handlePhotoUpload} 
+            />
+            <button 
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploadingPhoto}
+              className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-surface-dark border border-border-light/20 dark:border-border-dark/50 rounded-xl text-xs font-bold text-slate-700 dark:text-white hover:border-primary/50 transition-all active:scale-95 disabled:opacity-50"
+            >
+              <span className="material-symbols-outlined text-sm">image</span>
+              Galeriden Seç
+            </button>
+            <button 
+              onClick={() => cameraInputRef.current?.click()}
+              disabled={isUploadingPhoto}
+              className="flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/20 rounded-xl text-xs font-bold text-primary hover:bg-primary hover:text-white transition-all active:scale-95 disabled:opacity-50"
+            >
+              <span className="material-symbols-outlined text-sm">photo_camera</span>
+              Fotoğraf Çek
+            </button>
           </div>
 
           <div className="text-center">
@@ -507,8 +662,105 @@ const App: React.FC = () => {
         </div>
       </Modal>
 
+      {/* Themes Modal */}
+      <Modal 
+        isOpen={isThemesModalOpen} 
+        onClose={() => setIsThemesModalOpen(false)} 
+        title="Tema Ayarları"
+      >
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-2">
+            <h3 className="font-bold text-slate-900 dark:text-white mb-2">Genel Tema</h3>
+            <button 
+              onClick={() => setTheme('light')}
+              className={`w-full p-4 rounded-2xl border flex justify-between items-center transition-all ${
+                theme === 'light' 
+                  ? 'border-primary bg-primary/10' 
+                  : 'border-border-light dark:border-border-dark bg-slate-100 dark:bg-background-dark/30'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <span className={`material-symbols-outlined ${theme === 'light' ? 'text-primary' : 'text-slate-500'}`}>light_mode</span>
+                <span className={`font-bold ${theme === 'light' ? 'text-primary' : 'text-slate-900 dark:text-white'}`}>Açık Tema</span>
+              </div>
+              {theme === 'light' && <span className="material-symbols-outlined text-primary">check_circle</span>}
+            </button>
+
+            <button 
+              onClick={() => setTheme('dark')}
+              className={`w-full p-4 rounded-2xl border flex justify-between items-center transition-all ${
+                theme === 'dark' 
+                  ? 'border-primary bg-primary/10' 
+                  : 'border-border-light dark:border-border-dark bg-slate-100 dark:bg-background-dark/30'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <span className={`material-symbols-outlined ${theme === 'dark' ? 'text-primary' : 'text-slate-500'}`}>dark_mode</span>
+                <span className={`font-bold ${theme === 'dark' ? 'text-primary' : 'text-slate-900 dark:text-white'}`}>Koyu Tema</span>
+              </div>
+              {theme === 'dark' && <span className="material-symbols-outlined text-primary">check_circle</span>}
+            </button>
+          </div>
+
+          <div className="flex flex-col gap-2 mt-2">
+            <h3 className="font-bold text-slate-900 dark:text-white mb-2">Görsel Temalar (Doku)</h3>
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { id: 'tas', name: 'Taş' },
+                { id: 'mermer', name: 'Mermer' },
+                { id: 'tahta', name: 'Tahta' },
+                { id: 'obsidyen', name: 'Obsidyen' },
+                { id: 'kilim', name: 'Kilim' },
+                { id: 'beton', name: 'Beton' },
+                { id: 'cini', name: 'Çini' },
+                { id: 'garden', name: 'Bahçe' },
+                { id: 'silver', name: 'Gümüş' }
+              ].map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setTheme(t.id as any)}
+                  className={`aspect-square rounded-2xl border-2 flex flex-col items-center justify-center overflow-hidden transition-all relative ${
+                    theme === t.id 
+                      ? 'border-primary' 
+                      : 'border-transparent hover:border-border-light dark:hover:border-border-dark'
+                  }`}
+                >
+                  <div className="absolute inset-0 z-0">
+                    {t.id === 'tas' && <img src="/themes/taş.png" alt={t.name} className="w-full h-full object-cover" />}
+                    {t.id === 'mermer' && <img src="/themes/mermer.png" alt={t.name} className="w-full h-full object-cover" />}
+                    {t.id === 'tahta' && <img src="/themes/tahta.png" alt={t.name} className="w-full h-full object-cover" />}
+                    {t.id === 'obsidyen' && <img src="/themes/obsidyen.png" alt={t.name} className="w-full h-full object-cover" />}
+                    {t.id === 'kilim' && <img src="/themes/kilim.png" alt={t.name} className="w-full h-full object-cover" />}
+                    {t.id === 'beton' && <img src="/themes/beton.png" alt={t.name} className="w-full h-full object-cover" />}
+                    {t.id === 'cini' && <img src="/themes/çini.png" alt={t.name} className="w-full h-full object-cover" />}
+                    {t.id === 'garden' && <img src="/themes/garden.png" alt={t.name} className="w-full h-full object-cover" />}
+                    {t.id === 'silver' && <img src="/themes/silver.png" alt={t.name} className="w-full h-full object-cover" />}
+                    <div className="absolute inset-0 bg-black/40"></div>
+                  </div>
+                  <span className={`relative z-10 text-xs font-bold text-white drop-shadow-md`}>{t.name}</span>
+                  {theme === t.id && (
+                    <div className="absolute inset-0 z-20 flex items-center justify-center p-2">
+                       <span className="material-symbols-outlined text-white/50 text-4xl">check</span>
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <button 
+            onClick={() => setIsThemesModalOpen(false)}
+            className="w-full mt-4 bg-primary text-background-dark border border-border-light dark:border-primary font-extrabold text-lg h-14 rounded-2xl active:scale-95 transition-all"
+          >
+            Tamam
+          </button>
+        </div>
+      </Modal>
+
       <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
-    </div>
+        </div>
+      )}
+    </>
   );
 };
 

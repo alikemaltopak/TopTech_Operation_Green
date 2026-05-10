@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'motion/react';
 import { GardenStatus, WeatherCondition } from '../types';
 
 interface WeatherViewProps {
@@ -27,6 +28,32 @@ const WeatherView: React.FC<WeatherViewProps> = ({ status, activeLandName }) => 
     }
   };
 
+  const getAnimationProps = (condition: WeatherCondition) => {
+    switch (condition) {
+      case 'Sunny':
+        return {
+          animate: { rotate: 360 },
+          transition: { duration: 12, ease: "linear", repeat: Infinity }
+        };
+      case 'Rainy':
+        return {
+          animate: { y: [0, -5, 0] },
+          transition: { duration: 2, ease: "easeInOut", repeat: Infinity }
+        };
+      case 'PartlyCloudy':
+        return {
+          animate: { x: [-3, 3, -3] },
+          transition: { duration: 4, ease: "easeInOut", repeat: Infinity }
+        };
+      case 'Cloudy':
+      default:
+        return {
+          animate: { scale: [1, 1.05, 1] },
+          transition: { duration: 4, ease: "easeInOut", repeat: Infinity }
+        };
+    }
+  };
+
   return (
     <div className="mt-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
       <div className="mb-8 text-center">
@@ -47,9 +74,12 @@ const WeatherView: React.FC<WeatherViewProps> = ({ status, activeLandName }) => 
                status.condition === 'PartlyCloudy' ? 'Parçalı Bulutlu' : 'Bulutlu'}
             </div>
           </div>
-          <span className={`material-symbols-outlined text-8xl ${getConditionColor(status.condition)}`}>
+          <motion.span 
+            {...getAnimationProps(status.condition)}
+            className={`material-symbols-outlined text-8xl inline-block ${getConditionColor(status.condition)}`}
+          >
             {getConditionIcon(status.condition)}
-          </span>
+          </motion.span>
         </div>
 
         <div className="grid grid-cols-3 gap-4 mt-10 relative z-10">
@@ -75,9 +105,12 @@ const WeatherView: React.FC<WeatherViewProps> = ({ status, activeLandName }) => 
           <div key={index} className="flex items-center justify-between p-4 rounded-2xl border border-border-light dark:border-border-dark bg-surface-light/50 dark:bg-surface-dark/50 backdrop-blur-sm shadow-sm">
             <div className="w-24 font-bold text-slate-900 dark:text-white text-sm">{day.date}</div>
             <div className="flex items-center gap-3">
-              <span className={`material-symbols-outlined text-xl ${getConditionColor(day.condition)}`}>
+              <motion.span 
+                {...getAnimationProps(day.condition)}
+                className={`material-symbols-outlined text-xl inline-block ${getConditionColor(day.condition)}`}
+              >
                 {getConditionIcon(day.condition)}
-              </span>
+              </motion.span>
               <span className="text-slate-700 dark:text-slate-400 text-xs font-medium w-16">
                 {day.condition === 'Sunny' ? 'Güneşli' : 
                  day.condition === 'Rainy' ? 'Yağmurlu' : 

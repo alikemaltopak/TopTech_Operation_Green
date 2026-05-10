@@ -8,9 +8,10 @@ import ScheduleModal from './ScheduleModal';
 interface DashboardProps {
   status: GardenStatus;
   activeLandName: string;
-  onIrrigate: () => void;
+  onIrrigate: (minutes?: number) => void;
   onUpdateSchedule: (time: string, day: string) => void;
   onToggleSchedule: () => void;
+  currentSession?: { startTime: Date; durationMinutes?: number } | null;
 }
 
 const PlantAnimation: React.FC<{ progress: number; isIrrigating: boolean }> = ({ progress, isIrrigating }) => {
@@ -136,7 +137,7 @@ const PlantAnimation: React.FC<{ progress: number; isIrrigating: boolean }> = ({
   );
 };
 
-const Dashboard: React.FC<DashboardProps> = ({ status, activeLandName, onIrrigate, onUpdateSchedule, onToggleSchedule }) => {
+const Dashboard: React.FC<DashboardProps> = ({ status, activeLandName, onIrrigate, onUpdateSchedule, onToggleSchedule, currentSession }) => {
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [selectedMinutes, setSelectedMinutes] = useState(10);
   const [timeLeft, setTimeLeft] = useState(0);
@@ -150,7 +151,7 @@ const Dashboard: React.FC<DashboardProps> = ({ status, activeLandName, onIrrigat
   const startIrrigation = () => {
     if (!status.isIrrigating) {
       setTimeLeft(selectedMinutes * 60);
-      onIrrigate();
+      onIrrigate(selectedMinutes);
     } else {
       stopIrrigation();
     }
@@ -162,6 +163,26 @@ const Dashboard: React.FC<DashboardProps> = ({ status, activeLandName, onIrrigat
     if (status.isIrrigating) onIrrigate();
   };
 
+  // Initialize timer on mount or when session changes
+  useEffect(() => {
+    if (status.isIrrigating && currentSession?.startTime && currentSession.durationMinutes) {
+      const now = new Date();
+      const elapsedSeconds = Math.floor((now.getTime() - currentSession.startTime.getTime()) / 1000);
+      const remaining = (currentSession.durationMinutes * 60) - elapsedSeconds;
+      
+      if (remaining > 0) {
+        setTimeLeft(remaining);
+        setSelectedMinutes(currentSession.durationMinutes);
+      } else {
+        setTimeLeft(0);
+        onIrrigate(); // force stop if already expired
+      }
+    } else if (!status.isIrrigating) {
+      setTimeLeft(0);
+    }
+  }, [status.isIrrigating, currentSession]);
+
+  // Handle countdown interval
   useEffect(() => {
     if (status.isIrrigating && timeLeft > 0) {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -182,7 +203,7 @@ const Dashboard: React.FC<DashboardProps> = ({ status, activeLandName, onIrrigat
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [status.isIrrigating]);
+  }, [status.isIrrigating, timeLeft > 0]);
 
   const progress = (timeLeft === 0 && !status.isIrrigating) ? 0 : 
                    (timeLeft === 0 && status.isIrrigating) ? 0 : 

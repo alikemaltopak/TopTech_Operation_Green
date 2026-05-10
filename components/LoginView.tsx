@@ -1,5 +1,7 @@
 
 import React, { useState } from 'react';
+import { signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { auth, googleProvider } from '../lib/firebase';
 
 interface LoginViewProps {
   onLogin: (email: string) => void;
@@ -14,19 +16,34 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // Simüle edilmiş Firebase Auth süreci
-    setTimeout(() => {
+    try {
+      if (isLogin) {
+        await signInWithEmailAndPassword(auth, email, password);
+      } else {
+        await createUserWithEmailAndPassword(auth, email, password);
+      }
       onLogin(email);
+    } catch (error: any) {
+      console.error("Auth error:", error);
+      alert("Giriş başarısız: " + error.message);
+    } finally {
       setLoading(false);
-    }, 1800);
+    }
   };
 
-  const handleGoogleLogin = () => {
+  const handleGoogleLogin = async () => {
     setLoading(true);
-    setTimeout(() => {
-      onLogin('google-user@gmail.com');
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      if (result.user.email) {
+        onLogin(result.user.email);
+      }
+    } catch (error: any) {
+      console.error("Google login error:", error);
+      alert("Google giriş hatası: " + error.message);
+    } finally {
       setLoading(false);
-    }, 1800);
+    }
   };
 
   return (

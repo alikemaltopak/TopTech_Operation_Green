@@ -51,6 +51,84 @@
         -ms-overflow-style: none;  /* IE and Edge */
         scrollbar-width: none;  /* Firefox */
       }
+      
+      /* Texture styles */
+      html.theme-textured .bg-primary,
+      html.theme-textured .bg-surface-dark,
+      html.theme-textured .dark\:bg-surface-dark,
+      html.theme-textured .bg-slate-100,
+      html.theme-textured .dark\:bg-background-dark\/30,
+      html.theme-textured .bg-background-dark\/50,
+      html.theme-textured .bg-white\/5,
+      html.theme-textured .bg-white\/10,
+      html.theme-textured .bg-black\/20,
+      html.theme-textured .dark\:bg-surface-dark,
+      html.theme-textured .dark\:bg-background-dark\/50,
+      html.theme-textured .dark\:bg-background-dark\/30,
+      html.theme-textured .dark\:bg-white\/5,
+      html.theme-textured .dark\:bg-white\/10,
+      html.theme-textured .dark\:bg-black\/20 {
+        background-color: #fff !important; /* Base for texture mix */
+        background-image: 
+          linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 100%), 
+          var(--theme-img) !important;
+        background-size: cover !important;
+        background-position: center !important;
+        background-attachment: scroll !important;
+        
+        /* Advanced 3D Skeuomorphism */
+        box-shadow: 
+          inset 1px 1px 0px rgba(255,255,255,0.9), /* Top-left highlight */
+          inset -1px -1px 0px rgba(0,0,0,0.1),    /* Bottom-right shadow inside */
+          2px 4px 8px rgba(0,0,0,0.3),            /* Major drop shadow */
+          0px 0px 20px rgba(0,0,0,0.1)            /* Ambient occlusion */
+          !important;
+        
+        border: 1px solid rgba(0,0,0,0.1) !important;
+        color: #1a1a1a !important;
+        position: relative;
+        overflow: hidden;
+      }
+
+      /* Engraved text effect */
+      html.theme-textured .text-slate-900,
+      html.theme-textured .text-slate-700,
+      html.theme-textured .text-slate-600,
+      html.theme-textured .text-slate-500,
+      html.theme-textured .text-white,
+      html.theme-textured .dark\:text-white,
+      html.theme-textured .text-primary,
+      html.theme-textured h1, 
+      html.theme-textured h2, 
+      html.theme-textured h3,
+      html.theme-textured .material-symbols-outlined {
+        color: #2c2c2c !important;
+        font-weight: 700 !important;
+        text-shadow: 1px 1px 1px rgba(255,255,255,0.8), -0.5px -0.5px 0px rgba(0,0,0,0.2) !important; /* Engraving */
+      }
+      
+      /* Primary colored buttons / icons adjustment */
+      html.theme-textured .bg-primary {
+         filter: contrast(1.2) brightness(1.1);
+      }
+
+      /* Special treatment for active/hover states to feel like a pressed stone */
+      html.theme-textured button:active {
+        transform: translateY(2px) scale(0.98);
+        box-shadow: 
+          inset 2px 2px 5px rgba(0,0,0,0.2), 
+          0px 0px 0px transparent !important;
+      }
+      
+      /* Bars adjustment */
+      html.theme-textured .bg-slate-200,
+      html.theme-textured .dark\:bg-border-dark {
+        background-image: 
+          linear-gradient(to bottom, rgba(0,0,0,0.1), rgba(255,255,255,0.1)),
+          var(--theme-img) !important;
+        box-shadow: inset 1px 1px 3px rgba(0,0,0,0.3) !important;
+        border: 1px solid rgba(0,0,0,0.1) !important;
+      }
     </style>
   <script type="importmap">
 {

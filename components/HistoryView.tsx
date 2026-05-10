@@ -21,31 +21,17 @@ const HistoryView: React.FC<HistoryViewProps> = ({ activeLandName, activeLandIma
   
   // Sulama yapılan günler listesi (dinamik olarak sessions'dan çıkarılır)
   const irrigationDays = useMemo(() => {
-    // Hem simüle edilmiş eski veriler hem de yeni sessions birleştirilir
-    const simulatedDays = [3, 4, 7, 9, 12, 15];
     const sessionDays = sessions
       .filter(s => s.date.startsWith(currentMonthStr))
-      .map(s => parseInt(s.date.split('-')[2]));
+      .map(s => parseInt(s.date.split('-')[2], 10));
     
-    return Array.from(new Set([...simulatedDays, ...sessionDays]));
+    return Array.from(new Set([...sessionDays]));
   }, [sessions, currentMonthStr]);
-
-  // Simüle edilmiş sulama detayları (sadece eski günler için)
-  const simulatedDetails: Record<number, IrrigationSession[]> = {
-    3: [{ id: 'sim-3', landId: '1', landName: 'Zeytinlik', date: '2025-02-03', time: '05:30', startTime: '05:30:12', endTime: '06:15:45', duration: '45 dk 33 sn', icon: 'water_drop' }],
-    4: [{ id: 'sim-4', landId: '1', landName: 'Zeytinlik', date: '2025-02-04', time: '06:00', startTime: '06:00:00', endTime: '06:30:00', duration: '30 dk 00 sn', icon: 'water_drop' }],
-    7: [{ id: 'sim-7', landId: '1', landName: 'Zeytinlik', date: '2025-02-07', time: '05:15', startTime: '05:15:22', endTime: '06:00:10', duration: '44 dk 48 sn', icon: 'water_drop' }],
-    9: [{ id: 'sim-9', landId: '1', landName: 'Zeytinlik', date: '2025-02-09', time: '07:00', startTime: '07:00:05', endTime: '07:20:30', duration: '20 dk 25 sn', icon: 'water_drop' }],
-    12: [{ id: 'sim-12', landId: '1', landName: 'Zeytinlik', date: '2025-02-12', time: '05:45', startTime: '05:45:00', endTime: '06:45:00', duration: '60 dk 00 sn', icon: 'water_drop' }],
-    15: [{ id: 'sim-15', landId: '1', landName: 'Zeytinlik', date: '2025-02-15', time: '06:10', startTime: '06:10:15', endTime: '07:05:40', duration: '55 dk 25 sn', icon: 'water_drop' }],
-  };
 
   // Seçilen güne ait tüm oturumlar
   const daySessions = useMemo(() => {
     const selectedDateStr = `${currentMonthStr}-${selectedDay.toString().padStart(2, '0')}`;
-    const realSessions = sessions.filter(s => s.date === selectedDateStr);
-    const simSessions = simulatedDetails[selectedDay] || [];
-    return [...realSessions, ...simSessions];
+    return sessions.filter(s => s.date === selectedDateStr);
   }, [selectedDay, sessions, currentMonthStr]);
 
   const hasIrrigation = daySessions.length > 0;

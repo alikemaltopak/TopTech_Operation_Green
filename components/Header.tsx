@@ -6,9 +6,10 @@ interface HeaderProps {
   onProfileClick: () => void;
   theme: 'light' | 'dark';
   onThemeToggle: () => void;
+  userPhotoURL?: string | null;
 }
 
-const Header: React.FC<HeaderProps> = ({ isOnline, onProfileClick, theme, onThemeToggle }) => {
+const Header: React.FC<HeaderProps> = ({ isOnline, onProfileClick, theme, onThemeToggle, userPhotoURL }) => {
   return (
     <header className="sticky top-0 z-50 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md">
       <div className="flex items-center p-4 justify-between max-w-md mx-auto w-full">
@@ -42,9 +43,13 @@ const Header: React.FC<HeaderProps> = ({ isOnline, onProfileClick, theme, onThem
 
         <button 
           onClick={onProfileClick}
-          className="flex items-center justify-center h-10 w-10 rounded-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark shadow-sm active:scale-90 transition-transform"
+          className="flex items-center justify-center h-10 w-10 rounded-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark shadow-sm active:scale-90 transition-transform overflow-hidden"
         >
-          <span className="material-symbols-outlined text-slate-700 dark:text-white">person</span>
+          {userPhotoURL ? (
+            <img src={userPhotoURL} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+          ) : (
+            <span className="material-symbols-outlined text-slate-700 dark:text-white">person</span>
+          )}
         </button>
       </div>
     </header>
