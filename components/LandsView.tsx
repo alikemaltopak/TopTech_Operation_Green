@@ -7,35 +7,64 @@ interface LandsViewProps {
   lands: Land[];
   selectedLandId: string;
   onAddLand: (land: Land) => Promise<void>;
+  onUpdateLand: (id: string, updates: Partial<Land>) => Promise<void>;
   onSelectLand: (id: string) => void;
 }
 
-const LandsView: React.FC<LandsViewProps> = ({ lands, selectedLandId, onAddLand, onSelectLand }) => {
+const LandsView: React.FC<LandsViewProps> = ({ lands, selectedLandId, onAddLand, onUpdateLand, onSelectLand }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingLandId, setEditingLandId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
     coordinates: ''
   });
 
-  const handleAddLand = async (e: React.FormEvent) => {
+  const handleOpenEdit = (land: Land, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingLandId(land.id);
+    setFormData({
+      name: land.name,
+      phone: land.phoneNumber || '',
+      coordinates: land.coordinates || ''
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleOpenAdd = () => {
+    setEditingLandId(null);
+    setFormData({ name: '', phone: '', coordinates: '' });
+    setIsModalOpen(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.name) {
-      const newLand: Land = {
-        id: Date.now().toString(),
-        name: formData.name,
-        location: formData.coordinates || 'Konum Belirtilmedi',
-        sensorCount: 0,
-        image: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=600',
-        phoneNumber: formData.phone,
-        coordinates: formData.coordinates
-      };
       try {
-        await onAddLand(newLand);
+        if (editingLandId) {
+          await onUpdateLand(editingLandId, {
+            name: formData.name,
+            phoneNumber: formData.phone,
+            coordinates: formData.coordinates,
+            location: formData.coordinates || 'Konum Belirtilmedi'
+          });
+        } else {
+          const newLand: Land = {
+            id: Date.now().toString(),
+            name: formData.name,
+            location: formData.coordinates || 'Konum Belirtilmedi',
+            sensorCount: 0,
+            image: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=600',
+            phoneNumber: formData.phone,
+            coordinates: formData.coordinates
+          };
+          await onAddLand(newLand);
+        }
         setFormData({ name: '', phone: '', coordinates: '' });
         setIsModalOpen(false);
+        setEditingLandId(null);
       } catch (error: any) {
-        alert("Arazi kaydedilemedi. Lütfen veritabanı izinlerinizi kontrol edin.");
+        alert(`Arazi ${editingLandId ? 'güncellenemedi' : 'kaydedilemedi'}. Lütfen veritabanı izinlerinizi kontrol edin.`);
       }
     }
   };
@@ -81,11 +110,18 @@ const LandsView: React.FC<LandsViewProps> = ({ lands, selectedLandId, onAddLand,
                 Aktif
               </div>
             )}
+            <button 
+              onClick={(e) => handleOpenEdit(land, e)}
+              className={`absolute top-4 ${selectedLandId === land.id ? 'right-20' : 'right-5'} h-8 w-8 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center text-white/80 hover:text-white hover:bg-black/70 transition-all z-10`}
+              title="Araziyi Düzenle"
+            >
+              <span className="material-symbols-outlined text-sm">edit</span>
+            </button>
           </div>
         ))}
 
         <button 
-          onClick={() => setIsModalOpen(true)}
+          onClick={handleOpenAdd}
           className="w-full mt-2 flex items-center justify-center gap-3 border-2 border-dashed border-primary/40 bg-primary/5 text-primary hover:border-primary/80 hover:bg-primary/10 font-extrabold text-lg h-24 rounded-3xl transition-all active:scale-95 group"
         >
           <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center group-hover:bg-primary/30 transition-colors">
@@ -97,10 +133,13 @@ const LandsView: React.FC<LandsViewProps> = ({ lands, selectedLandId, onAddLand,
 
       <Modal 
         isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        title="Yeni Arazi Ekle"
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingLandId(null);
+        }} 
+        title={editingLandId ? "Araziyi Düzenle" : "Yeni Arazi Ekle"}
       >
-        <form onSubmit={handleAddLand} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider ml-1">Arazi Adı</label>
             <input 
