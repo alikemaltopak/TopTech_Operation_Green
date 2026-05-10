@@ -51,13 +51,13 @@ const App: React.FC = () => {
     body.style.backgroundPosition = '';
     
     const themeImages: Record<string, string> = {
-      'tas': '/themes/taş.png',
+      'tas': '/themes/tas.png',
       'mermer': '/themes/mermer.png',
       'tahta': '/themes/tahta.png',
       'obsidyen': '/themes/obsidyen.png',
       'kilim': '/themes/kilim.png',
       'beton': '/themes/beton.png',
-      'cini': '/themes/çini.png',
+      'cini': '/themes/cini.png',
       'garden': '/themes/garden.png',
       'silver': '/themes/silver.png'
     };
@@ -726,13 +726,13 @@ const App: React.FC = () => {
                   }`}
                 >
                   <div className="absolute inset-0 z-0">
-                    {t.id === 'tas' && <img src="/themes/taş.png" alt={t.name} className="w-full h-full object-cover" />}
+                    {t.id === 'tas' && <img src="/themes/tas.png" alt={t.name} className="w-full h-full object-cover" />}
                     {t.id === 'mermer' && <img src="/themes/mermer.png" alt={t.name} className="w-full h-full object-cover" />}
                     {t.id === 'tahta' && <img src="/themes/tahta.png" alt={t.name} className="w-full h-full object-cover" />}
                     {t.id === 'obsidyen' && <img src="/themes/obsidyen.png" alt={t.name} className="w-full h-full object-cover" />}
                     {t.id === 'kilim' && <img src="/themes/kilim.png" alt={t.name} className="w-full h-full object-cover" />}
                     {t.id === 'beton' && <img src="/themes/beton.png" alt={t.name} className="w-full h-full object-cover" />}
-                    {t.id === 'cini' && <img src="/themes/çini.png" alt={t.name} className="w-full h-full object-cover" />}
+                    {t.id === 'cini' && <img src="/themes/cini.png" alt={t.name} className="w-full h-full object-cover" />}
                     {t.id === 'garden' && <img src="/themes/garden.png" alt={t.name} className="w-full h-full object-cover" />}
                     {t.id === 'silver' && <img src="/themes/silver.png" alt={t.name} className="w-full h-full object-cover" />}
                     <div className="absolute inset-0 bg-black/40"></div>
