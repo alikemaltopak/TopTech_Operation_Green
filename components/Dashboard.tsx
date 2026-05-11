@@ -233,7 +233,7 @@ const Dashboard: React.FC<DashboardProps> = ({ status, activeLandName, onIrrigat
       </div>
 
       {/* Controller Card - FIXED Centering and Clipping */}
-      <div className="bg-surface-light dark:bg-surface-dark/40 rounded-[2.5rem] border border-border-light dark:border-border-dark p-6 shadow-2xl relative overflow-hidden backdrop-blur-md mx-1 text-slate-900 dark:text-white">
+      <div className="bg-surface-light dark:bg-surface-dark rounded-[2.5rem] border border-border-light dark:border-border-dark p-6 shadow-2xl relative overflow-hidden backdrop-blur-md mx-1 text-slate-900 dark:text-white">
         <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-transparent via-primary/50 to-transparent"></div>
         
         <div className="flex flex-col items-center gap-8 w-full">
@@ -255,7 +255,7 @@ const Dashboard: React.FC<DashboardProps> = ({ status, activeLandName, onIrrigat
 
               {/* Center Counter */}
               <div className="col-span-3 flex flex-col items-center justify-center">
-                <div className="text-5xl font-black text-slate-900 dark:text-white tabular-nums leading-none tracking-tight">
+                <div className="text-5xl font-black text-slate-900 dark:text-primary tabular-nums leading-none tracking-tight">
                   {status.isIrrigating ? formatTime(timeLeft) : selectedMinutes}
                 </div>
                 <div className="text-[10px] font-black text-primary tracking-[0.2em] mt-3 uppercase whitespace-nowrap">
