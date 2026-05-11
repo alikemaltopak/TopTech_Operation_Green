@@ -5,15 +5,22 @@ import { NavTab } from '../types';
 interface NavigationProps {
   activeTab: NavTab;
   onTabChange: (tab: NavTab) => void;
+  themeIcons: {
+    panel: string;
+    weather: string;
+    history: string;
+    lands: string;
+    settings: string;
+  };
 }
 
-const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange }) => {
+const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange, themeIcons }) => {
   const tabs = [
-    { id: NavTab.PANEL, label: 'Panel', icon: 'grid_view' },
-    { id: NavTab.WEATHER, label: 'Hava Durumu', icon: 'cloud' },
-    { id: NavTab.HISTORY, label: 'Geçmiş', icon: 'history' },
-    { id: NavTab.LANDS, label: 'Arazilerim', icon: 'landscape' },
-    { id: NavTab.SETTINGS, label: 'Ayarlar', icon: 'settings' }
+    { id: NavTab.PANEL, label: 'Panel', icon: themeIcons.panel },
+    { id: NavTab.WEATHER, label: 'Hava Durumu', icon: themeIcons.weather },
+    { id: NavTab.HISTORY, label: 'Geçmiş', icon: themeIcons.history },
+    { id: NavTab.LANDS, label: 'Arazilerim', icon: themeIcons.lands },
+    { id: NavTab.SETTINGS, label: 'Ayarlar', icon: themeIcons.settings }
   ];
 
   return (
@@ -23,11 +30,10 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange }) => {
           <button
             key={tab.id}
             onClick={() => onTabChange(tab.id)}
-            className={`flex flex-col items-center gap-1 min-w-[60px] transition-all duration-300 ${
-              activeTab === tab.id 
-                ? 'text-primary transform -translate-y-0.5' 
+            className={`flex flex-col items-center gap-1 min-w-[60px] transition-all duration-300 ${activeTab === tab.id
+                ? 'text-primary transform -translate-y-0.5'
                 : 'text-slate-500 dark:text-[#92c9a4] hover:text-slate-600 dark:hover:text-white'
-            }`}
+              }`}
           >
             <span className={`material-symbols-outlined transition-all ${activeTab === tab.id ? 'font-bold scale-110' : ''}`}>
               {tab.icon}

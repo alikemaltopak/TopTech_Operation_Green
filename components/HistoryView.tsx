@@ -116,7 +116,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({ activeLandName, activeLandIma
             <div 
               key={session.id}
               onClick={() => handleOpenDetail(session)}
-              className="flex flex-col gap-5 p-6 rounded-[2rem] border border-primary/20 bg-surface-light dark:bg-[#122b1c] shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-500 overflow-hidden relative cursor-pointer active:scale-[0.98] transition-all group"
+              className="flex flex-col gap-5 p-6 rounded-[2rem] border border-primary/20 bg-surface-light dark:bg-surface-dark shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-500 overflow-hidden relative cursor-pointer active:scale-[0.98] transition-all group"
             >
               <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
               
@@ -138,7 +138,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({ activeLandName, activeLandIma
               </div>
 
               <div className="pt-5 border-t border-slate-200 dark:border-white/5 flex justify-between items-center">
-                <span className="text-[10px] font-black text-slate-500 dark:text-white/40 uppercase tracking-widest">{selectedDay} {currentMonthName.toUpperCase()} {currentYear}</span>
+                <span className="text-[10px] font-black text-slate-500 dark:text-[#92c9a4] uppercase tracking-widest">{selectedDay} {currentMonthName.toUpperCase()} {currentYear}</span>
                 <div className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-primary text-base font-bold">check_circle</span>
                   <span className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-widest">SİSTEM KAYDI ONAYLANDI</span>
