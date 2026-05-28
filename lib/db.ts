@@ -1,4 +1,4 @@
-import { collection, doc, setDoc, addDoc, updateDoc, deleteDoc, query, orderBy, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, setDoc, addDoc, updateDoc, deleteDoc, query, orderBy, onSnapshot, serverTimestamp, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { Land, IrrigationSession } from '../types';
 
@@ -16,10 +16,51 @@ const getHistoryCollectionPath = (email: string) => {
 export const updateUserDocument = async (email: string) => {
   const userId = email.replaceAll('.', '_').replaceAll('@', '_');
   const userRef = doc(db, 'users', userId);
-  await setDoc(userRef, {
-    email,
-    lastLogin: serverTimestamp()
-  }, { merge: true });
+  const userSnap = await getDoc(userRef);
+  
+  if (!userSnap.exists()) {
+    // New user: Set all defaults!
+    await setDoc(userRef, {
+      email,
+      lastLogin: serverTimestamp(),
+      tankCapacity: 5000,
+      isScheduleActive: false,
+      nextSchedule: "05:30",
+      nextScheduleDay: "Belirtilmedi"
+    });
+  } else {
+    // Existing user: Update lastLogin and set settings defaults ONLY if they are missing
+    const data = userSnap.data();
+    const updates: Record<string, any> = {
+      lastLogin: serverTimestamp()
+    };
+    if (data.tankCapacity === undefined) updates.tankCapacity = 5000;
+    if (data.isScheduleActive === undefined) updates.isScheduleActive = false;
+    if (data.nextSchedule === undefined) updates.nextSchedule = "05:30";
+    if (data.nextScheduleDay === undefined) updates.nextScheduleDay = "Belirtilmedi";
+    
+    await updateDoc(userRef, updates);
+  }
+};
+
+export const subscribeToUserSettings = (email: string, callback: (settings: any) => void) => {
+  const userId = email.replaceAll('.', '_').replaceAll('@', '_');
+  const userRef = doc(db, 'users', userId);
+  return onSnapshot(userRef, (snapshot) => {
+    if (snapshot.exists()) {
+      callback(snapshot.data());
+    } else {
+      callback(null);
+    }
+  }, (error) => {
+    console.error("Error fetching user settings:", error);
+  });
+};
+
+export const updateUserSettings = async (email: string, updates: Record<string, any>) => {
+  const userId = email.replaceAll('.', '_').replaceAll('@', '_');
+  const userRef = doc(db, 'users', userId);
+  await updateDoc(userRef, updates);
 };
 
 export const addLand = async (email: string, land: Omit<Land, 'id'>) => {
