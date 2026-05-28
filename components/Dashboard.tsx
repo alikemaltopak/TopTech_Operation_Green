@@ -238,7 +238,7 @@ const Dashboard: React.FC<DashboardProps> = ({ status, activeLandName, onIrrigat
         
         <div className="flex flex-col items-center gap-8 w-full">
           <div className="flex flex-col items-center gap-5 w-full">
-            <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] text-center">SULAMA SÜRESİ KONTROLÜ</span>
+            <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.3em] text-center">SULAMA SÜRESİ KONTROLÜ</span>
             
             {/* Grid Layout for Perfect Centering */}
             <div className="grid grid-cols-5 items-center w-full px-1">
@@ -247,7 +247,7 @@ const Dashboard: React.FC<DashboardProps> = ({ status, activeLandName, onIrrigat
                 <button 
                   onClick={() => adjustMinutes(-1)}
                   disabled={status.isIrrigating}
-                  className="h-12 w-12 rounded-full border border-border-light dark:border-border-dark flex items-center justify-center text-slate-500 hover:text-primary transition-all active:scale-90 disabled:opacity-5"
+                  className="h-12 w-12 rounded-full border border-border-light dark:border-border-dark flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-primary transition-all active:scale-90 disabled:opacity-5"
                 >
                   <span className="material-symbols-outlined text-2xl">remove</span>
                 </button>
@@ -268,7 +268,7 @@ const Dashboard: React.FC<DashboardProps> = ({ status, activeLandName, onIrrigat
                 <button 
                   onClick={() => adjustMinutes(1)}
                   disabled={status.isIrrigating}
-                  className="h-12 w-12 rounded-full border border-border-light dark:border-border-dark flex items-center justify-center text-slate-500 hover:text-primary transition-all active:scale-90 disabled:opacity-5"
+                  className="h-12 w-12 rounded-full border border-border-light dark:border-border-dark flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-primary transition-all active:scale-90 disabled:opacity-5"
                 >
                   <span className="material-symbols-outlined text-2xl">add</span>
                 </button>
@@ -282,7 +282,7 @@ const Dashboard: React.FC<DashboardProps> = ({ status, activeLandName, onIrrigat
                   <button 
                     key={m}
                     onClick={() => setSelectedMinutes(m)}
-                    className={`px-4 py-2 rounded-full text-[10px] font-black border transition-all ${selectedMinutes === m ? 'bg-primary text-background-dark border-primary shadow-lg shadow-primary/20' : 'border-border-light dark:border-border-dark text-slate-700 hover:bg-white/5'}`}
+                    className={`px-4 py-2 rounded-full text-[10px] font-black border transition-all ${selectedMinutes === m ? 'bg-primary text-background-dark border-primary shadow-lg shadow-primary/20' : 'border-border-light dark:border-border-dark text-slate-700 dark:text-slate-300 hover:bg-white/5'}`}
                   >
                     {m} DK
                   </button>

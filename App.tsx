@@ -268,10 +268,15 @@ const App: React.FC = () => {
           const minutes = Math.floor(totalSeconds / 60);
           const seconds = totalSeconds % 60;
 
+          const localYear = now.getFullYear();
+          const localMonth = String(now.getMonth() + 1).padStart(2, '0');
+          const localDay = String(now.getDate()).padStart(2, '0');
+          const localDateStr = `${localYear}-${localMonth}-${localDay}`;
+
           const newSession = {
             landId: currentSessionRef.current.landId,
             landName: currentSessionRef.current.landName,
-            date: now.toISOString().split('T')[0],
+            date: localDateStr,
             time: start.toTimeString().slice(0, 5),
             startTime: start.toTimeString().slice(0, 8),
             endTime: now.toTimeString().slice(0, 8),
@@ -561,26 +566,26 @@ const App: React.FC = () => {
               </div>
 
               <div className="w-full space-y-3">
-                <div className="bg-slate-100 dark:bg-background-dark/30 p-4 rounded-2xl border border-border-light/10 dark:border-border-dark/30 flex items-center justify-between">
+                <div className="bg-slate-100 dark:bg-black/30 p-4 rounded-2xl border border-border-light dark:border-border-dark flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <span className="material-symbols-outlined text-slate-600 dark:text-slate-400 text-sm">mail</span>
-                    <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">E-posta</span>
+                    <span className="material-symbols-outlined text-slate-600 dark:text-[#92c9a4]/60 text-sm">mail</span>
+                    <span className="text-[11px] font-bold text-slate-600 dark:text-[#92c9a4]/60 uppercase tracking-wider">E-posta</span>
                   </div>
                   <span className="text-xs font-bold text-slate-900 dark:text-white truncate max-w-[150px]">{user.email}</span>
                 </div>
 
-                <div className="bg-slate-100 dark:bg-background-dark/30 p-4 rounded-2xl border border-border-light/10 dark:border-border-dark/30 flex items-center justify-between">
+                <div className="bg-slate-100 dark:bg-black/30 p-4 rounded-2xl border border-border-light dark:border-border-dark flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <span className="material-symbols-outlined text-slate-600 dark:text-slate-400 text-sm">calendar_month</span>
-                    <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Kayıt Tarihi</span>
+                    <span className="material-symbols-outlined text-slate-600 dark:text-[#92c9a4]/60 text-sm">calendar_month</span>
+                    <span className="text-[11px] font-bold text-slate-600 dark:text-[#92c9a4]/60 uppercase tracking-wider">Kayıt Tarihi</span>
                   </div>
                   <span className="text-xs font-bold text-slate-900 dark:text-white">Haziran 2024</span>
                 </div>
 
-                <div className="bg-slate-100 dark:bg-background-dark/30 p-4 rounded-2xl border border-border-light/10 dark:border-border-dark/30 flex items-center justify-between">
+                <div className="bg-slate-100 dark:bg-black/30 p-4 rounded-2xl border border-border-light dark:border-border-dark flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <span className="material-symbols-outlined text-slate-600 dark:text-slate-400 text-sm">grid_view</span>
-                    <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Toplam Arazi</span>
+                    <span className="material-symbols-outlined text-slate-600 dark:text-[#92c9a4]/60 text-sm">grid_view</span>
+                    <span className="text-[11px] font-bold text-slate-600 dark:text-[#92c9a4]/60 uppercase tracking-wider">Toplam Arazi</span>
                   </div>
                   <span className="text-xs font-bold text-primary">{lands.length} Adet</span>
                 </div>
@@ -603,7 +608,7 @@ const App: React.FC = () => {
             title="Sistem Cihaz Durumu"
           >
             <div className="flex flex-col gap-4">
-              <div className="p-4 rounded-2xl bg-slate-100 dark:bg-background-dark/30 border border-border-light/10 dark:border-border-dark/50 flex items-center justify-between">
+              <div className="p-4 rounded-2xl bg-slate-100 dark:bg-black/30 border border-border-light dark:border-border-dark flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <span className="material-symbols-outlined text-primary">videocam</span>
                   <span className="text-sm font-bold text-slate-900 dark:text-white">Güvenlik Kamerası</span>
@@ -611,29 +616,29 @@ const App: React.FC = () => {
                 <span className="text-xs font-black text-primary uppercase bg-primary/10 px-2 py-0.5 rounded-full">ÇEVRİMİÇİ</span>
               </div>
 
-              <div className="p-4 rounded-2xl bg-slate-100 dark:bg-background-dark/30 border border-border-light/10 dark:border-border-dark/50 flex items-center justify-between">
+              <div className="p-4 rounded-2xl bg-slate-100 dark:bg-black/30 border border-border-light dark:border-border-dark flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <span className="material-symbols-outlined text-yellow-400">solar_power</span>
                   <span className="text-sm font-bold text-slate-900 dark:text-white">Güneş Paneli</span>
                 </div>
                 <div className="flex flex-col items-end">
                   <span className="text-xs font-black text-yellow-400 uppercase">ŞARJ OLUYOR</span>
-                  <span className="text-[10px] text-slate-600 dark:text-slate-400">14.2V Giriş</span>
+                  <span className="text-[10px] text-slate-600 dark:text-[#92c9a4]/60">14.2V Giriş</span>
                 </div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-slate-100 dark:bg-background-dark/30 border border-border-light/10 dark:border-border-dark/50 flex items-center justify-between">
+              <div className="p-4 rounded-2xl bg-slate-100 dark:bg-black/30 border border-border-light dark:border-border-dark flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <span className="material-symbols-outlined text-primary">tungsten</span>
                   <span className="text-sm font-bold text-slate-900 dark:text-white">Bahçe Aydınlatması</span>
                 </div>
                 <div className="flex flex-col items-end">
                   <span className="text-xs font-black text-primary uppercase">AKTİF</span>
-                  <span className="text-[10px] text-slate-600 dark:text-slate-400">Gece Modu</span>
+                  <span className="text-[10px] text-slate-600 dark:text-[#92c9a4]/60">Gece Modu</span>
                 </div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-slate-100 dark:bg-background-dark/30 border border-border-light/10 dark:border-border-dark/50">
+              <div className="p-4 rounded-2xl bg-slate-100 dark:bg-black/30 border border-border-light dark:border-border-dark">
                 <div className="flex items-center gap-3 mb-3">
                   <span className="material-symbols-outlined text-blue-400">sensors</span>
                   <span className="text-sm font-bold text-slate-900 dark:text-white">Nem Sensörleri (x4)</span>

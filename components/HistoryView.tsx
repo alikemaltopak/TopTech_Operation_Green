@@ -17,7 +17,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({ activeLandName, activeLandIma
   
   const currentMonthName = today.toLocaleString('tr-TR', { month: 'long' });
   const currentYear = today.getFullYear();
-  const currentMonthStr = today.toISOString().split('T')[0].slice(0, 7); // YYYY-MM
+  const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`; // YYYY-MM
   
   // Sulama yapılan günler listesi (dinamik olarak sessions'dan çıkarılır)
   const irrigationDays = useMemo(() => {
@@ -177,15 +177,15 @@ const HistoryView: React.FC<HistoryViewProps> = ({ activeLandName, activeLandIma
                 </div>
              </div>
 
-             <div className="grid grid-cols-2 gap-4">
-                <div className="bg-slate-100 dark:bg-background-dark/50 p-4 rounded-2xl border border-border-light/10 dark:border-border-dark/30 flex flex-col items-center">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-slate-100 dark:bg-black/30 p-4 rounded-2xl border border-border-light dark:border-border-dark flex flex-col items-center">
                    <span className="material-symbols-outlined text-primary text-lg mb-1">play_arrow</span>
-                   <span className="text-[9px] font-black text-slate-600 dark:text-slate-500 uppercase tracking-widest mb-1">BAŞLANGIÇ</span>
+                   <span className="text-[9px] font-black text-slate-600 dark:text-[#92c9a4]/60 uppercase tracking-widest mb-1">BAŞLANGIÇ</span>
                    <span className="text-lg font-black text-slate-900 dark:text-white tabular-nums">{selectedSession.startTime}</span>
                 </div>
-                <div className="bg-slate-100 dark:bg-background-dark/50 p-4 rounded-2xl border border-border-light/10 dark:border-border-dark/30 flex flex-col items-center">
+                <div className="bg-slate-100 dark:bg-black/30 p-4 rounded-2xl border border-border-light dark:border-border-dark flex flex-col items-center">
                    <span className="material-symbols-outlined text-rose-500 text-lg mb-1">stop</span>
-                   <span className="text-[9px] font-black text-slate-600 dark:text-slate-500 uppercase tracking-widest mb-1">BİTİŞ</span>
+                   <span className="text-[9px] font-black text-slate-600 dark:text-[#92c9a4]/60 uppercase tracking-widest mb-1">BİTİŞ</span>
                    <span className="text-lg font-black text-slate-900 dark:text-white tabular-nums">{selectedSession.endTime}</span>
                 </div>
              </div>

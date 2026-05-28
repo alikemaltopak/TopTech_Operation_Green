@@ -162,7 +162,7 @@ const LandsView: React.FC<LandsViewProps> = ({ lands, selectedLandId, onAddLand,
               type="text" 
               required
               placeholder="Örn: Zeytinlik"
-              className="bg-white dark:bg-background-dark/50 border border-border-light dark:border-border-dark rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all placeholder:text-slate-500 dark:placeholder:text-slate-600"
+              className="bg-slate-50 dark:bg-black/30 border border-border-light dark:border-border-dark rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all placeholder:text-slate-500 dark:placeholder:text-slate-600"
               value={formData.name}
               onChange={(e) => setFormData({...formData, name: e.target.value})}
             />
@@ -172,7 +172,7 @@ const LandsView: React.FC<LandsViewProps> = ({ lands, selectedLandId, onAddLand,
             <input 
               type="tel" 
               placeholder="+90 5xx xxx xx xx"
-              className="bg-white dark:bg-background-dark/50 border border-border-light dark:border-border-dark rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all placeholder:text-slate-500 dark:placeholder:text-slate-600"
+              className="bg-slate-50 dark:bg-black/30 border border-border-light dark:border-border-dark rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all placeholder:text-slate-500 dark:placeholder:text-slate-600"
               value={formData.phone}
               onChange={(e) => setFormData({...formData, phone: e.target.value})}
             />
@@ -182,7 +182,7 @@ const LandsView: React.FC<LandsViewProps> = ({ lands, selectedLandId, onAddLand,
             <input 
               type="text" 
               placeholder="41.0082, 28.9784"
-              className="bg-white dark:bg-background-dark/50 border border-border-light dark:border-border-dark rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all placeholder:text-slate-500 dark:placeholder:text-slate-600"
+              className="bg-slate-50 dark:bg-black/30 border border-border-light dark:border-border-dark rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all placeholder:text-slate-500 dark:placeholder:text-slate-600"
               value={formData.coordinates}
               onChange={(e) => setFormData({...formData, coordinates: e.target.value})}
             />

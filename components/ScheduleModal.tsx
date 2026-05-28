@@ -41,13 +41,13 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({ isOpen, onClose, onSave, 
     <Modal isOpen={isOpen} onClose={onClose} title="Zamanlayıcı Ayarla">
       <div className="flex flex-col gap-6">
         {/* Stylized Time Picker */}
-        <div className="flex justify-center items-center gap-4 bg-surface-light dark:bg-background-dark/30 py-6 rounded-3xl border border-border-light dark:border-border-dark/30">
+        <div className="flex justify-center items-center gap-4 bg-surface-light dark:bg-black/30 py-6 rounded-3xl border border-border-light dark:border-border-dark">
           <div className="flex flex-col items-center gap-1">
-            <button onClick={() => setHour(prev => hours[(parseInt(prev) + 1) % 24])} className="text-slate-600 hover:text-primary transition-colors">
+            <button onClick={() => setHour(prev => hours[(parseInt(prev) + 1) % 24])} className="text-slate-600 dark:text-slate-400 hover:text-primary transition-colors">
               <span className="material-symbols-outlined">expand_less</span>
             </button>
             <div className="text-5xl font-black text-slate-900 dark:text-white w-16 text-center tabular-nums">{hour}</div>
-            <button onClick={() => setHour(prev => hours[(parseInt(prev) + 23) % 24])} className="text-slate-600 hover:text-primary transition-colors">
+            <button onClick={() => setHour(prev => hours[(parseInt(prev) + 23) % 24])} className="text-slate-600 dark:text-slate-400 hover:text-primary transition-colors">
               <span className="material-symbols-outlined">expand_more</span>
             </button>
           </div>
@@ -55,11 +55,11 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({ isOpen, onClose, onSave, 
           <div className="text-4xl font-black text-primary animate-pulse">:</div>
 
           <div className="flex flex-col items-center gap-1">
-            <button onClick={() => setMinute(prev => minutes[(minutes.indexOf(prev) + 1) % 12])} className="text-slate-600 hover:text-primary transition-colors">
+            <button onClick={() => setMinute(prev => minutes[(minutes.indexOf(prev) + 1) % 12])} className="text-slate-600 dark:text-slate-400 hover:text-primary transition-colors">
               <span className="material-symbols-outlined">expand_less</span>
             </button>
             <div className="text-5xl font-black text-slate-900 dark:text-white w-16 text-center tabular-nums">{minute}</div>
-            <button onClick={() => setMinute(prev => minutes[(minutes.indexOf(prev) + 11) % 12])} className="text-slate-600 hover:text-primary transition-colors">
+            <button onClick={() => setMinute(prev => minutes[(minutes.indexOf(prev) + 11) % 12])} className="text-slate-600 dark:text-slate-400 hover:text-primary transition-colors">
               <span className="material-symbols-outlined">expand_more</span>
             </button>
           </div>
@@ -68,14 +68,14 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({ isOpen, onClose, onSave, 
         {/* Calendar Picker */}
         <div className="flex flex-col gap-3">
           <div className="flex justify-between items-center px-1">
-            <label className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">TARİH SEÇİN</label>
+            <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">TARİH SEÇİN</label>
             <span className="text-xs font-bold text-primary">{monthName} {currentYear}</span>
           </div>
           
-          <div className="bg-surface-light dark:bg-surface-dark/40 border border-border-light dark:border-border-dark/30 rounded-2xl p-3">
+          <div className="bg-surface-light dark:bg-black/20 border border-border-light dark:border-border-dark rounded-2xl p-3">
             <div className="grid grid-cols-7 gap-y-2 text-center mb-2">
               {weekdays.map(wd => (
-                <div key={wd} className="text-[8px] font-black text-slate-600">{wd}</div>
+                <div key={wd} className="text-[8px] font-black text-slate-600 dark:text-slate-400">{wd}</div>
               ))}
               
               {/* Empty slots for start of month */}

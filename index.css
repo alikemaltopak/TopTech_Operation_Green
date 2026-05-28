@@ -1,0 +1,32 @@
+/* TOPTECH Operasyon Yeşili - Global Styles */
+
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
+
+:root {
+  /* Default fallbacks */
+  --color-primary: #76c893;
+  --color-bg-light: #fdfcf0;
+  --color-bg-dark: #1b2620;
+  --color-surface-light: #f9f7e8;
+  --color-surface-dark: #25332b;
+  --color-border-light: #e2e8f0;
+  --color-border-dark: #3a4d42;
+
+  --radius-default: 0.5rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-2xl: 2rem;
+}
+
+/* Custom scrollbar reset */
+::-webkit-scrollbar {
+  display: none;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
