@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { NavTab, GardenStatus, Land, WeatherCondition, ForecastDay, IrrigationSession } from './types';
-import { subscribeToLands, subscribeToHistory, addHistorySession, addLand, updateUserDocument, updateLand } from './lib/db';
+import { subscribeToLands, subscribeToHistory, addHistorySession, addLand, updateUserDocument, updateLand, subscribeToUserSettings, updateUserSettings, deleteLand } from './lib/db';
 import { auth, storage } from './lib/firebase';
 import { onAuthStateChanged, signOut, updateProfile } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -87,15 +87,18 @@ const App: React.FC = () => {
     battery: 88,
     waterSaved: 120,
     waterRemaining: 439.5,
-    tankCapacity: 500,
+    tankCapacity: 5000,
     nextSchedule: "05:30",
-    nextScheduleDay: "Yarın Sabah",
+    nextScheduleDay: "Belirtilmedi",
     isIrrigating: false,
     isOnline: true,
-    isScheduleActive: true,
+    isScheduleActive: false,
     condition: 'Sunny',
     forecast: []
   });
+
+  const [activeNotification, setActiveNotification] = useState<{ title: string; message: string; landName: string } | null>(null);
+  const lastNotifiedTimeRef = useRef<string>('');
 
   // Firebase Auth listener
   useEffect(() => {
@@ -149,9 +152,22 @@ const App: React.FC = () => {
       setHistorySessions(fetchedSessions);
     });
 
+    const unsubscribeSettings = subscribeToUserSettings(user.email, (settings) => {
+      if (settings) {
+        setStatus(prev => ({
+          ...prev,
+          tankCapacity: settings.tankCapacity !== undefined ? settings.tankCapacity : 5000,
+          isScheduleActive: settings.isScheduleActive !== undefined ? settings.isScheduleActive : false,
+          nextSchedule: settings.nextSchedule !== undefined ? settings.nextSchedule : "05:30",
+          nextScheduleDay: settings.nextScheduleDay !== undefined ? settings.nextScheduleDay : "Belirtilmedi",
+        }));
+      }
+    });
+
     return () => {
       unsubscribeLands();
       unsubscribeHistory();
+      unsubscribeSettings();
     };
   }, [user]);
 
@@ -296,12 +312,81 @@ const App: React.FC = () => {
   }, [selectedLandId, lands, user]);
 
   const handleUpdateSchedule = useCallback((time: string, day: string) => {
-    setStatus(prev => ({ ...prev, nextSchedule: time, nextScheduleDay: day }));
-  }, []);
+    setStatus(prev => ({ ...prev, nextSchedule: time, nextScheduleDay: day, isScheduleActive: true }));
+    if (user?.email) {
+      updateUserSettings(user.email, {
+        nextSchedule: time,
+        nextScheduleDay: day,
+        isScheduleActive: true
+      }).catch(console.error);
+    }
+  }, [user]);
 
   const handleToggleSchedule = useCallback(() => {
-    setStatus(prev => ({ ...prev, isScheduleActive: !prev.isScheduleActive }));
-  }, []);
+    setStatus(prev => {
+      const nextVal = !prev.isScheduleActive;
+      if (user?.email) {
+        updateUserSettings(user.email, { isScheduleActive: nextVal }).catch(console.error);
+      }
+      return { ...prev, isScheduleActive: nextVal };
+    });
+  }, [user]);
+
+  // Automated Schedule Checker & Notification System
+  useEffect(() => {
+    if (!user || !status.isScheduleActive || !status.nextSchedule) return;
+
+    const checkSchedule = () => {
+      const now = new Date();
+      const currentHourMin = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      
+      // Trigger notification when current time matches schedule and we haven't notified in this minute
+      if (currentHourMin === status.nextSchedule && lastNotifiedTimeRef.current !== currentHourMin) {
+        lastNotifiedTimeRef.current = currentHourMin;
+        
+        const activeLand = lands.find(l => l.id === selectedLandId);
+        const landName = activeLand?.name || "Bahçeniz";
+        const title = "Toptech Otomatik Sulama";
+        const message = `Zamanı geldi! "${landName}" araziniz için planlanan otomatik sulama seansı başlıyor.`;
+        
+        // 1. Show in-app sliding alert toast banner
+        setActiveNotification({ title, message, landName });
+        
+        // 2. Trigger browser native push notification
+        if ('Notification' in window && Notification.permission === 'granted') {
+          try {
+            new Notification(title, {
+              body: message,
+              icon: '/favicon.ico'
+            });
+          } catch (e) {
+            console.error("Browser notification failed:", e);
+          }
+        }
+        
+        // 3. Automatically turn on physical-simulated irrigation
+        handleStartIrrigation(10);
+      }
+
+      // Reset the lock when past the schedule minute
+      if (currentHourMin !== status.nextSchedule) {
+        lastNotifiedTimeRef.current = '';
+      }
+    };
+
+    const interval = setInterval(checkSchedule, 10000); // Check every 10s
+    return () => clearInterval(interval);
+  }, [user, status.isScheduleActive, status.nextSchedule, lands, selectedLandId, handleStartIrrigation]);
+
+  // Auto dismiss toast notification after 10 seconds
+  useEffect(() => {
+    if (activeNotification) {
+      const timer = setTimeout(() => {
+        setActiveNotification(null);
+      }, 10000);
+      return () => clearTimeout(timer);
+    }
+  }, [activeNotification]);
 
   const handleAddLand = async (newLand: Land) => {
     if (!user?.email) return;
@@ -323,6 +408,16 @@ const App: React.FC = () => {
     } catch (e: any) {
       console.error("Error updating land:", e);
       throw e;
+    }
+  };
+
+  const handleDeleteLand = async (landId: string) => {
+    if (!user?.email) return;
+    try {
+      await deleteLand(user.email, landId);
+    } catch (e: any) {
+      console.error("Error deleting land:", e);
+      alert("Arazi silinirken bir hata oluştu.");
     }
   };
 
@@ -350,6 +445,26 @@ const App: React.FC = () => {
 
   return (
     <>
+      {activeNotification && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[200] w-full max-w-sm px-4 animate-in slide-in-from-top duration-500">
+          <div className="bg-surface-light/95 dark:bg-surface-dark/95 backdrop-blur-xl border border-primary/30 rounded-3xl p-5 shadow-2xl flex items-start gap-4 ring-1 ring-black/5 dark:ring-white/10">
+            <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center text-primary shrink-0 animate-bounce">
+              <span className="material-symbols-outlined text-2xl font-bold">notifications_active</span>
+            </div>
+            <div className="flex-1">
+              <h4 className="font-black text-slate-900 dark:text-white text-sm tracking-tight">{activeNotification.title}</h4>
+              <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">{activeNotification.message}</p>
+            </div>
+            <button 
+              onClick={() => setActiveNotification(null)}
+              className="text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors shrink-0"
+            >
+              <span className="material-symbols-outlined text-sm">close</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {showIntro && <AppIntro onComplete={handleIntroComplete} />}
 
       {!showIntro && (
@@ -395,6 +510,7 @@ const App: React.FC = () => {
                 selectedLandId={selectedLandId}
                 onAddLand={handleAddLand}
                 onUpdateLand={handleUpdateLand}
+                onDeleteLand={handleDeleteLand}
                 onSelectLand={handleSelectLand}
               />
             )}
@@ -440,7 +556,13 @@ const App: React.FC = () => {
                       max="15000"
                       step="100"
                       value={status.tankCapacity}
-                      onChange={(e) => setStatus(prev => ({ ...prev, tankCapacity: parseInt(e.target.value) }))}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value, 10);
+                        setStatus(prev => ({ ...prev, tankCapacity: val }));
+                        if (user?.email) {
+                          updateUserSettings(user.email, { tankCapacity: val }).catch(console.error);
+                        }
+                      }}
                       className="w-full h-2 bg-slate-100 dark:bg-border-dark rounded-lg appearance-none cursor-pointer accent-primary"
                     />
                     <div className="flex justify-between text-[10px] font-bold text-slate-400 mt-2 uppercase">

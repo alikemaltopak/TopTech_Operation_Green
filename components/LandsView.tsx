@@ -8,6 +8,7 @@ interface LandsViewProps {
   selectedLandId: string;
   onAddLand: (land: Land) => Promise<void>;
   onUpdateLand: (id: string, updates: Partial<Land>) => Promise<void>;
+  onDeleteLand?: (id: string) => Promise<void>;
   onSelectLand: (id: string) => void;
 }
 
@@ -17,7 +18,7 @@ const defaultImages = [
   '/lands/modern_greenhouse.png'
 ];
 
-const LandsView: React.FC<LandsViewProps> = ({ lands, selectedLandId, onAddLand, onUpdateLand, onSelectLand }) => {
+const LandsView: React.FC<LandsViewProps> = ({ lands, selectedLandId, onAddLand, onUpdateLand, onDeleteLand, onSelectLand }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLandId, setEditingLandId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -41,6 +42,20 @@ const LandsView: React.FC<LandsViewProps> = ({ lands, selectedLandId, onAddLand,
     setEditingLandId(null);
     setFormData({ name: '', phone: '', coordinates: '' });
     setIsModalOpen(true);
+  };
+
+  const handleDelete = () => {
+    if (!editingLandId) return;
+    const confirmDelete = window.confirm(
+      `"${formData.name}" arazisini silmek istediğinizden emin misiniz?\n\nBu işlem veritabanındaki sulama geçmişlerinizi de kalıcı olarak silecektir.`
+    );
+    if (confirmDelete) {
+      if (onDeleteLand) {
+        onDeleteLand(editingLandId);
+        setIsModalOpen(false);
+        setEditingLandId(null);
+      }
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -204,6 +219,17 @@ const LandsView: React.FC<LandsViewProps> = ({ lands, selectedLandId, onAddLand,
               <span className="material-symbols-outlined text-primary text-xl">map</span>
               <span>Haritadan Bul</span>
             </button>
+
+            {editingLandId && (
+              <button 
+                type="button"
+                onClick={handleDelete}
+                className="w-full flex items-center justify-center gap-2 bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500 hover:text-white font-black text-sm h-12 rounded-xl transition-all active:scale-95 mt-1"
+              >
+                <span className="material-symbols-outlined text-sm animate-pulse">delete</span>
+                <span>ARAZİYİ SİL</span>
+              </button>
+            )}
           </div>
         </form>
       </Modal>
