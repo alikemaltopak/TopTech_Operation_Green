@@ -86,7 +86,7 @@ export const themes: Record<string, ThemeConfig> = {
   'garden': {
     id: 'garden', name: 'Bahçe', image: '/themes/garden.png', isDark: true,
     colors: { primary: '#22c55e', bgLight: '#f0fdf4', bgDark: '#052e16', surfaceLight: '#ffffff', surfaceDark: '#14532d', borderLight: '#bbf7d0', borderDark: '#166534' },
-    radius: { default: '9999px', lg: '9999px', xl: '9999px', '2xl': '9999px' },
+    radius: { default: '1rem', lg: '1.5rem', xl: '2rem', '2xl': '3rem' },
     icons: { panel: 'local_florist', weather: 'sunny', history: 'track_changes', lands: 'yard', settings: 'spa', water: 'dew_point' }
   },
   'silver': {

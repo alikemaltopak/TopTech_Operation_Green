@@ -10,14 +10,18 @@ interface HistoryViewProps {
 }
 
 const HistoryView: React.FC<HistoryViewProps> = ({ activeLandName, activeLandImage, sessions }) => {
+  const [currentDate, setCurrentDate] = useState(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  });
   const today = new Date();
-  const [selectedDay, setSelectedDay] = useState(today.getDate());
+  const [selectedDay, setSelectedDay] = useState(() => today.getDate());
   const [selectedSession, setSelectedSession] = useState<IrrigationSession | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   
-  const currentMonthName = today.toLocaleString('tr-TR', { month: 'long' });
-  const currentYear = today.getFullYear();
-  const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`; // YYYY-MM
+  const currentMonthName = currentDate.toLocaleString('tr-TR', { month: 'long' });
+  const currentYear = currentDate.getFullYear();
+  const currentMonthStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`; // YYYY-MM
   
   // Sulama yapılan günler listesi (dinamik olarak sessions'dan çıkarılır)
   const irrigationDays = useMemo(() => {
@@ -37,10 +41,44 @@ const HistoryView: React.FC<HistoryViewProps> = ({ activeLandName, activeLandIma
   const hasIrrigation = daySessions.length > 0;
 
   const weekdays = ['PT', 'SA', 'ÇA', 'PE', 'CU', 'CT', 'PZ'];
-  const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
   const startDayOfWeek = (firstDayOfMonth.getDay() + 6) % 7;
-  const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+  const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
   const calendarDays = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+
+  const selectedSessionDateFormatted = useMemo(() => {
+    if (!selectedSession) return '';
+    const [sYear, sMonth, sDay] = selectedSession.date.split('-');
+    const sDateObj = new Date(parseInt(sYear), parseInt(sMonth) - 1, parseInt(sDay));
+    const sMonthName = sDateObj.toLocaleString('tr-TR', { month: 'long' });
+    return `${sDay} ${sMonthName.toUpperCase()} ${sYear}`;
+  }, [selectedSession]);
+
+  const handlePrevMonth = () => {
+    setCurrentDate(prev => {
+      const newDate = new Date(prev.getFullYear(), prev.getMonth() - 1, 1);
+      const now = new Date();
+      if (newDate.getFullYear() === now.getFullYear() && newDate.getMonth() === now.getMonth()) {
+        setSelectedDay(now.getDate());
+      } else {
+        setSelectedDay(1);
+      }
+      return newDate;
+    });
+  };
+
+  const handleNextMonth = () => {
+    setCurrentDate(prev => {
+      const newDate = new Date(prev.getFullYear(), prev.getMonth() + 1, 1);
+      const now = new Date();
+      if (newDate.getFullYear() === now.getFullYear() && newDate.getMonth() === now.getMonth()) {
+        setSelectedDay(now.getDate());
+      } else {
+        setSelectedDay(1);
+      }
+      return newDate;
+    });
+  };
 
   const handleOpenDetail = (session: IrrigationSession) => {
     setSelectedSession(session);
@@ -64,10 +102,16 @@ const HistoryView: React.FC<HistoryViewProps> = ({ activeLandName, activeLandIma
         <div className="flex justify-between items-center mb-8 relative z-10">
           <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase tracking-[0.1em]">{currentMonthName} {currentYear}</h3>
           <div className="flex gap-2">
-            <button className="h-8 w-8 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-background-dark/50 text-slate-600 dark:text-[#92c9a4] border border-border-light dark:border-border-dark hover:text-primary transition-all active:scale-90">
+            <button 
+              onClick={handlePrevMonth}
+              className="h-8 w-8 flex items-center justify-center rounded-xl bg-slate-200/60 dark:bg-white/5 text-slate-700 dark:text-primary border border-slate-300/50 dark:border-white/10 hover:bg-slate-300/80 dark:hover:bg-white/10 transition-all active:scale-90"
+            >
                <span className="material-symbols-outlined text-sm font-bold">chevron_left</span>
             </button>
-            <button className="h-8 w-8 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-background-dark/50 text-slate-600 dark:text-[#92c9a4] border border-border-light dark:border-border-dark hover:text-primary transition-all active:scale-90">
+            <button 
+              onClick={handleNextMonth}
+              className="h-8 w-8 flex items-center justify-center rounded-xl bg-slate-200/60 dark:bg-white/5 text-slate-700 dark:text-primary border border-slate-300/50 dark:border-white/10 hover:bg-slate-300/80 dark:hover:bg-white/10 transition-all active:scale-90"
+            >
                <span className="material-symbols-outlined text-sm font-bold">chevron_right</span>
             </button>
           </div>
@@ -171,10 +215,10 @@ const HistoryView: React.FC<HistoryViewProps> = ({ activeLandName, activeLandIma
                 <div className="h-12 w-12 rounded-xl overflow-hidden shrink-0 border border-primary/20">
                    <img src={activeLandImage} className="w-full h-full object-cover" />
                 </div>
-                <div>
-                   <h4 className="font-bold text-slate-900 dark:text-white text-base tracking-tight">{selectedSession.landName}</h4>
-                   <p className="text-[10px] font-black text-primary uppercase tracking-widest">{selectedSession.date.split('-')[2]} {currentMonthName.toUpperCase()} {currentYear}</p>
-                </div>
+                 <div>
+                    <h4 className="font-bold text-slate-900 dark:text-white text-base tracking-tight">{selectedSession.landName}</h4>
+                    <p className="text-[10px] font-black text-primary uppercase tracking-widest">{selectedSessionDateFormatted}</p>
+                 </div>
              </div>
 
               <div className="grid grid-cols-2 gap-4">
