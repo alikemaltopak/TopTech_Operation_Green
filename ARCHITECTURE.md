@@ -196,3 +196,23 @@ Temalar ayrıca kendi ikon setlerini tanımlar (`icons` nesnesi). `Navigation` b
 
 ---
 *Geliştirmeye başlamak için hazırsınız! Herhangi bir geliştirmede bu dosyayı rehber alabilirsiniz.*
+
+---
+
+## 8. Canlıya Alınacak Ürün Standartları ve Yol Haritası (Product Roadmap)
+
+Gelecekte uygulamanın tamamen ticari veya profesyonel düzeyde (SaaS) canlıya alınabilmesi ve üst düzey güvenlik standartlarına kavuşabilmesi için belirlenen teknik yol haritası önerileri:
+
+### 1. Firebase Cloud Functions Entegrasyonu (Güvenli Sunucusuz Backend)
+*   **Hassas API Anahtarı Güvenliği:** Gemini API anahtarı, SMS Gateway veya Ödeme Sistemleri gibi dış servis şifrelerinin frontend'de (istemci) açığa çıkmaması için Firebase Cloud Functions katmanına taşınması. Tarayıcı doğrudan bu anahtarları görmez, sorgular sunucu tarafında güvenli tünellerle yapılır.
+*   **Veritabanı Tetikleyicileri (Firestore Triggers):** Bir arazi silindiğinde, o araziye ait geçmiş sulama kayıtlarının (history) arka planda otomatik ve sessiz bir şekilde temizlenmesi (Garbage Collection) fonksiyonunun yazılması.
+
+### 2. Gerçek IoT / Donanım Sensör Bağlantıları
+*   Arazideki gerçek nem sensör kartlarının (ESP32, Arduino vb.) veritabanı ile doğrudan haberleşmesi için Cloud Functions üzerinde açık bir **HTTP POST (Webhooks)** uç noktası oluşturulması. Cihazlar nemi ölçtükçe bu adrese istek atar ve Firestore anlık gerçek değerlerle beslenir.
+
+### 3. Yapay Zeka (AI) Destekli Sulama Asistanı
+*   Gemini API entegrasyonu tamamlanarak; arazinin anlık nem oranı, toprak cinsi, koordinatları ve 5 günlük hava durumu tahmin verileri harmanlanarak kullanıcıya optimal sulama miktarı ve zamanı öneren bir yapay zeka asistanı eklenmesi.
+
+### 4. Otomatik SMS API Entegrasyonu
+*   SMS komutlarının kullanıcının telefonundan manuel SMS URI ile tetiklenmesi yerine, arka planda (Cloud Functions) Twilio veya benzeri bir toplu SMS servisi üzerinden internet üzerinden tam otomatik ve saniyeler içinde gönderilmesini sağlamak.
+

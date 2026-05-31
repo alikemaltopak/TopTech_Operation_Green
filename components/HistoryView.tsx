@@ -147,12 +147,12 @@ const HistoryView: React.FC<HistoryViewProps> = ({ activeLandName, activeLandIma
             </div>
           ))
         ) : (
-          <div className="flex flex-col items-center justify-center py-12 px-8 text-center bg-surface-light dark:bg-surface-dark/20 rounded-[2.5rem] border border-dashed border-border-light dark:border-border-dark/50 animate-in fade-in zoom-in duration-500">
-             <div className="h-20 w-20 rounded-full bg-slate-100 dark:bg-surface-dark flex items-center justify-center mb-4">
-                <span className="material-symbols-outlined text-slate-300 dark:text-slate-600 text-4xl">bedtime</span>
+          <div className="flex flex-col items-center justify-center py-12 px-8 text-center bg-slate-50 dark:bg-black/30 rounded-[2.5rem] border border-dashed border-border-light dark:border-border-dark animate-in fade-in zoom-in duration-500">
+             <div className="h-20 w-20 rounded-full bg-slate-100 dark:bg-black/20 flex items-center justify-center mb-4">
+                <span className="material-symbols-outlined text-slate-400 dark:text-[#92c9a4]/60 text-4xl">bedtime</span>
              </div>
              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Kayıt Bulunmuyor</h3>
-             <p className="text-xs text-slate-700 dark:text-[#92c9a4] font-medium leading-relaxed">
+             <p className="text-xs text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
                {selectedDay} {currentMonthName} tarihinde {activeLandName} arazisinde bir sulama işlemi gerçekleştirilmedi.
              </p>
           </div>
