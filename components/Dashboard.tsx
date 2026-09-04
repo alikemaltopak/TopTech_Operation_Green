@@ -8,6 +8,7 @@ import ScheduleModal from './ScheduleModal';
 interface DashboardProps {
   status: GardenStatus;
   activeLandName: string;
+  activeLandPhoneNumber?: string;
   onIrrigate: (minutes?: number, forceState?: boolean) => void;
   onRefillTank?: () => void;
   onUpdateSchedule: (time: string, day: string) => void;
@@ -190,7 +191,7 @@ const CircularGauge: React.FC<{ percentage: number; size?: number; strokeWidth?:
   );
 };
 
-const Dashboard: React.FC<DashboardProps> = ({ status, activeLandName, onIrrigate, onRefillTank, onUpdateSchedule, onToggleSchedule, currentSession, onPhysicsUpdate }) => {
+const Dashboard: React.FC<DashboardProps> = ({ status, activeLandName, activeLandPhoneNumber, onIrrigate, onRefillTank, onUpdateSchedule, onToggleSchedule, currentSession, onPhysicsUpdate }) => {
   // ─── Physics Engine ───
   const physicsEngineRef = useRef<WaterIrrigationPhysicsEngine | null>(null);
   const [physicsState, setPhysicsState] = useState<InstantState | null>(null);
@@ -607,6 +608,7 @@ const Dashboard: React.FC<DashboardProps> = ({ status, activeLandName, onIrrigat
         onClose={() => setIsScheduleModalOpen(false)} 
         onSave={onUpdateSchedule}
         currentTime={status.nextSchedule}
+        phoneNumber={activeLandPhoneNumber}
       />
     </div>
   );

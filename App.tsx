@@ -524,6 +524,7 @@ const App: React.FC = () => {
               <Dashboard
                 status={status}
                 activeLandName={activeLand?.name || "Arazi Seçilmedi"}
+                activeLandPhoneNumber={activeLand?.phoneNumber}
                 onIrrigate={handleStartIrrigation}
                 onUpdateSchedule={handleUpdateSchedule}
                 onToggleSchedule={handleToggleSchedule}
@@ -981,15 +982,7 @@ const App: React.FC = () => {
                 </div>
               </div>
 
-              {/* Hardware Status Tiles */}
-              <div className="p-4 rounded-2xl bg-slate-100 dark:bg-black/30 border border-border-light dark:border-border-dark flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="material-symbols-outlined text-primary">videocam</span>
-                  <span className="text-sm font-bold text-slate-900 dark:text-white">Güvenlik Kamerası</span>
-                </div>
-                <span className="text-xs font-black text-primary uppercase bg-primary/10 px-2 py-0.5 rounded-full">ÇEVRİMİÇİ</span>
-              </div>
-
+              {/* Hardware Status Tile */}
               <div className="p-4 rounded-2xl bg-slate-100 dark:bg-black/30 border border-border-light dark:border-border-dark flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <span className="material-symbols-outlined text-yellow-400">solar_power</span>
@@ -998,32 +991,6 @@ const App: React.FC = () => {
                 <div className="flex flex-col items-end">
                   <span className="text-xs font-black text-yellow-400 uppercase">ŞARJ OLUYOR</span>
                   <span className="text-[10px] text-slate-600 dark:text-[#92c9a4]/60">14.2V Giriş</span>
-                </div>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-slate-100 dark:bg-black/30 border border-border-light dark:border-border-dark flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="material-symbols-outlined text-primary">tungsten</span>
-                  <span className="text-sm font-bold text-slate-900 dark:text-white">Bahçe Aydınlatması</span>
-                </div>
-                <div className="flex flex-col items-end">
-                  <span className="text-xs font-black text-primary uppercase">AKTİF</span>
-                  <span className="text-[10px] text-slate-600 dark:text-[#92c9a4]/60">Gece Modu</span>
-                </div>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-slate-100 dark:bg-black/30 border border-border-light dark:border-border-dark">
-                <div className="flex items-center gap-3 mb-3">
-                  <span className="material-symbols-outlined text-blue-400">sensors</span>
-                  <span className="text-sm font-bold text-slate-900 dark:text-white">Nem Sensörleri (x4)</span>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  {[1, 2, 3, 4].map(id => (
-                    <div key={id} className="flex items-center justify-between bg-slate-200 dark:bg-black/20 p-2 rounded-lg text-[10px]">
-                      <span className="text-slate-600 dark:text-slate-400 font-bold">#0{id}</span>
-                      <span className="text-primary font-black">AKTİF</span>
-                    </div>
-                  ))}
                 </div>
               </div>
 
