@@ -174,9 +174,15 @@ const HistoryView: React.FC<HistoryViewProps> = ({ activeLandName, activeLandIma
                 </div>
                 <div className="flex-1">
                   <h4 className="font-black text-slate-900 dark:text-white text-xl tracking-tight uppercase">{session.landName}</h4>
-                  <div className="flex items-center gap-2 text-[10px] font-black text-primary uppercase tracking-[0.15em] mt-1.5">
-                    <span className="h-2 w-2 rounded-full bg-primary animate-pulse"></span>
-                    SULAMA BAŞARIYLA YAPILDI
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                    <div className="flex items-center gap-1 text-[10px] font-black text-primary bg-primary/10 px-2.5 py-1 rounded-full border border-primary/20">
+                      <span className="material-symbols-outlined text-xs">water_drop</span>
+                      <span>{session.totalConsumedLiters !== undefined && session.totalConsumedLiters > 0 ? `${session.totalConsumedLiters.toFixed(1)} L Su` : 'Sulama Yapıldı'}</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-[10px] font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-white/5 px-2.5 py-1 rounded-full border border-border-light/20 dark:border-white/10">
+                      <span className="material-symbols-outlined text-xs">timer</span>
+                      <span>{session.duration}</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -234,12 +240,24 @@ const HistoryView: React.FC<HistoryViewProps> = ({ activeLandName, activeLandIma
                 </div>
              </div>
 
-             <div className="bg-primary/10 border border-primary/20 p-5 rounded-2xl flex flex-col items-center gap-2">
-                <span className="text-[9px] font-black text-primary uppercase tracking-[0.3em]">TOPLAM ÇALIŞMA SÜRESİ</span>
-                <div className="flex items-center gap-3">
-                   <span className="material-symbols-outlined text-primary font-bold">timer</span>
-                   <span className="text-2xl font-black text-slate-900 dark:text-white tabular-nums">{selectedSession.duration}</span>
-                </div>
+             <div className="grid grid-cols-2 gap-3">
+               <div className="bg-primary/10 border border-primary/20 p-4 rounded-2xl flex flex-col items-center gap-1">
+                  <span className="text-[9px] font-black text-primary uppercase tracking-[0.2em]">ÇALIŞMA SÜRESİ</span>
+                  <div className="flex items-center gap-2 mt-1">
+                     <span className="material-symbols-outlined text-primary font-bold text-base">timer</span>
+                     <span className="text-lg font-black text-slate-900 dark:text-white tabular-nums">{selectedSession.duration}</span>
+                  </div>
+               </div>
+
+               <div className="bg-blue-500/10 border border-blue-500/20 p-4 rounded-2xl flex flex-col items-center gap-1">
+                  <span className="text-[9px] font-black text-blue-400 uppercase tracking-[0.2em]">SU TÜKETİMİ</span>
+                  <div className="flex items-center gap-2 mt-1">
+                     <span className="material-symbols-outlined text-blue-400 font-bold text-base">water_drop</span>
+                     <span className="text-lg font-black text-slate-900 dark:text-white tabular-nums">
+                       {selectedSession.totalConsumedLiters !== undefined ? `${selectedSession.totalConsumedLiters.toFixed(1)} L` : '0 L'}
+                     </span>
+                  </div>
+               </div>
              </div>
 
              <button 

@@ -23,7 +23,15 @@ export const updateUserDocument = async (email: string) => {
     await setDoc(userRef, {
       email,
       lastLogin: serverTimestamp(),
-      tankCapacity: 5000,
+      tankCapacity: 3000,
+      waterRemaining: 3000,
+      baseHeightMeters: 0.5,
+      netWaterHeightMeters: 1.65,
+      pipeLengthMeters: 20,
+      irrigationType: 'drip',
+      dripperCount: 300,
+      dripperFlowRateLph: 8.0,
+      valveSize: 'DN20',
       isScheduleActive: false,
       nextSchedule: "05:30",
       nextScheduleDay: "Belirtilmedi"
@@ -34,7 +42,15 @@ export const updateUserDocument = async (email: string) => {
     const updates: Record<string, any> = {
       lastLogin: serverTimestamp()
     };
-    if (data.tankCapacity === undefined) updates.tankCapacity = 5000;
+    if (data.tankCapacity === undefined) updates.tankCapacity = 3000;
+    if (data.waterRemaining === undefined) updates.waterRemaining = 3000;
+    if (data.baseHeightMeters === undefined) updates.baseHeightMeters = 0.5;
+    if (data.netWaterHeightMeters === undefined) updates.netWaterHeightMeters = 1.65;
+    if (data.pipeLengthMeters === undefined) updates.pipeLengthMeters = 20;
+    if (data.irrigationType === undefined) updates.irrigationType = 'drip';
+    if (data.dripperCount === undefined) updates.dripperCount = 300;
+    if (data.dripperFlowRateLph === undefined) updates.dripperFlowRateLph = 8.0;
+    if (data.valveSize === undefined) updates.valveSize = 'DN20';
     if (data.isScheduleActive === undefined) updates.isScheduleActive = false;
     if (data.nextSchedule === undefined) updates.nextSchedule = "05:30";
     if (data.nextScheduleDay === undefined) updates.nextScheduleDay = "Belirtilmedi";

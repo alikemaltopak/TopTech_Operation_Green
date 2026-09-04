@@ -77,6 +77,7 @@ const App: React.FC = () => {
   };
   const [historySessions, setHistorySessions] = useState<IrrigationSession[]>([]);
   const currentSessionRef = useRef<{ startTime: Date; landId: string; landName: string; durationMinutes?: number } | null>(null);
+  const physicsConsumedRef = useRef<number>(0); // Fizik motorundan gelen toplam tüketim
 
   const [lands, setLands] = useState<Land[]>([]);
   const [selectedLandId, setSelectedLandId] = useState<string>('');
@@ -86,8 +87,15 @@ const App: React.FC = () => {
     temperature: 24,
     battery: 88,
     waterSaved: 120,
-    waterRemaining: 439.5,
-    tankCapacity: 5000,
+    waterRemaining: 3000,
+    tankCapacity: 3000,
+    baseHeightMeters: 0.5,
+    netWaterHeightMeters: 1.65,
+    pipeLengthMeters: 20,
+    irrigationType: 'drip',
+    dripperCount: 300,
+    dripperFlowRateLph: 8.0,
+    valveSize: 'DN20',
     nextSchedule: "05:30",
     nextScheduleDay: "Belirtilmedi",
     isIrrigating: false,
@@ -156,7 +164,15 @@ const App: React.FC = () => {
       if (settings) {
         setStatus(prev => ({
           ...prev,
-          tankCapacity: settings.tankCapacity !== undefined ? settings.tankCapacity : 5000,
+          tankCapacity: settings.tankCapacity !== undefined ? settings.tankCapacity : 3000,
+          waterRemaining: settings.waterRemaining !== undefined ? settings.waterRemaining : (prev.waterRemaining ?? 3000),
+          baseHeightMeters: settings.baseHeightMeters !== undefined ? settings.baseHeightMeters : 0.5,
+          netWaterHeightMeters: settings.netWaterHeightMeters !== undefined ? settings.netWaterHeightMeters : 1.65,
+          pipeLengthMeters: settings.pipeLengthMeters !== undefined ? settings.pipeLengthMeters : 20,
+          irrigationType: settings.irrigationType !== undefined ? settings.irrigationType : 'drip',
+          dripperCount: settings.dripperCount !== undefined ? settings.dripperCount : 300,
+          dripperFlowRateLph: settings.dripperFlowRateLph !== undefined ? settings.dripperFlowRateLph : 8.0,
+          valveSize: settings.valveSize !== undefined ? settings.valveSize : 'DN20',
           isScheduleActive: settings.isScheduleActive !== undefined ? settings.isScheduleActive : false,
           nextSchedule: settings.nextSchedule !== undefined ? settings.nextSchedule : "05:30",
           nextScheduleDay: settings.nextScheduleDay !== undefined ? settings.nextScheduleDay : "Belirtilmedi",
@@ -240,20 +256,18 @@ const App: React.FC = () => {
           ? Math.min(100, prev.moisture + 1)
           : Math.max(0, prev.moisture - 0.05),
         battery: Math.max(0, prev.battery - 0.01),
-        waterRemaining: prev.isIrrigating
-          ? Math.max(0, prev.waterRemaining - 0.5)
-          : prev.waterRemaining
+        // Su tüketimi artık WaterIrrigationPhysicsEngine tarafından hesaplanıyor
       }));
     }, 3000);
 
     return () => clearInterval(interval);
   }, [user]);
 
-  const handleStartIrrigation = useCallback((minutes?: number) => {
+  const handleStartIrrigation = useCallback((minutes?: number, forceState?: boolean) => {
     const activeLand = lands.find(l => l.id === selectedLandId);
 
     setStatus(prev => {
-      const starting = !prev.isIrrigating;
+      const starting = forceState !== undefined ? forceState : !prev.isIrrigating;
 
       if (starting) {
         if (activeLand?.phoneNumber) {
@@ -269,11 +283,15 @@ const App: React.FC = () => {
           landName: activeLand?.name || "Bilinmeyen Arazi",
           durationMinutes: minutes
         };
+        physicsConsumedRef.current = 0;
       } else {
         if (activeLand?.phoneNumber) {
           const smsUri = `sms:${activeLand.phoneNumber}?body=OFF`;
           window.location.href = smsUri;
         }
+
+        const consumedLiters = physicsConsumedRef.current || 0;
+        const newWaterRemaining = Math.max(0, Math.round((prev.waterRemaining - consumedLiters) * 10) / 10);
 
         // Record end time and create session
         if (currentSessionRef.current) {
@@ -281,8 +299,8 @@ const App: React.FC = () => {
           const start = currentSessionRef.current.startTime;
           const diffMs = now.getTime() - start.getTime();
           const totalSeconds = Math.floor(diffMs / 1000);
-          const minutes = Math.floor(totalSeconds / 60);
-          const seconds = totalSeconds % 60;
+          const mins = Math.floor(totalSeconds / 60);
+          const secs = totalSeconds % 60;
 
           const localYear = now.getFullYear();
           const localMonth = String(now.getMonth() + 1).padStart(2, '0');
@@ -296,20 +314,44 @@ const App: React.FC = () => {
             time: start.toTimeString().slice(0, 5),
             startTime: start.toTimeString().slice(0, 8),
             endTime: now.toTimeString().slice(0, 8),
-            duration: `${minutes} dk ${seconds} sn`,
-            icon: 'water_drop'
+            duration: `${mins} dk ${secs} sn`,
+            icon: 'water_drop',
+            totalConsumedLiters: Math.round(consumedLiters * 10) / 10
           };
 
           if (user?.email) {
             addHistorySession(user.email, newSession).catch(console.error);
+            updateUserSettings(user.email, { waterRemaining: newWaterRemaining }).catch(console.error);
           }
           currentSessionRef.current = null;
+        } else {
+          if (user?.email) {
+            updateUserSettings(user.email, { waterRemaining: newWaterRemaining }).catch(console.error);
+          }
         }
+
+        physicsConsumedRef.current = 0;
+
+        return {
+          ...prev,
+          isIrrigating: false,
+          waterRemaining: newWaterRemaining
+        };
       }
 
       return { ...prev, isIrrigating: starting };
     });
   }, [selectedLandId, lands, user]);
+
+  const handleRefillTank = useCallback(() => {
+    setStatus(prev => {
+      const fullCapacity = prev.tankCapacity;
+      if (user?.email) {
+        updateUserSettings(user.email, { waterRemaining: fullCapacity }).catch(console.error);
+      }
+      return { ...prev, waterRemaining: fullCapacity };
+    });
+  }, [user]);
 
   const handleUpdateSchedule = useCallback((time: string, day: string) => {
     setStatus(prev => ({ ...prev, nextSchedule: time, nextScheduleDay: day, isScheduleActive: true }));
@@ -486,6 +528,7 @@ const App: React.FC = () => {
                 onUpdateSchedule={handleUpdateSchedule}
                 onToggleSchedule={handleToggleSchedule}
                 currentSession={currentSessionRef.current}
+                onPhysicsUpdate={(consumed: number) => { physicsConsumedRef.current = consumed; }}
               />
             )}
 
@@ -605,7 +648,7 @@ const App: React.FC = () => {
                     >
                       <div className="flex items-center gap-3">
                         <span className="material-symbols-outlined text-slate-500">info</span>
-                        <span className="font-bold text-sm">Cihaz Bilgisi</span>
+                        <span className="font-bold text-sm">Sistem Bilgisi</span>
                       </div>
                       <span className="material-symbols-outlined text-slate-400">chevron_right</span>
                     </button>
@@ -723,13 +766,222 @@ const App: React.FC = () => {
             </div>
           </Modal>
 
-          {/* Device Info Modal */}
+          {/* Sistem Bilgisi Modal */}
           <Modal
             isOpen={isDeviceInfoModalOpen}
             onClose={() => setIsDeviceInfoModalOpen(false)}
-            title="Sistem Cihaz Durumu"
+            title="Sistem Bilgisi"
           >
             <div className="flex flex-col gap-4">
+              {/* Depo Doldur Butonu */}
+              <button
+                onClick={handleRefillTank}
+                className="w-full p-4 rounded-2xl bg-blue-500/15 border border-blue-500/40 text-blue-400 font-black flex items-center justify-center gap-3 hover:bg-blue-500/25 transition-all active:scale-95 shadow-lg"
+              >
+                <span className="material-symbols-outlined text-2xl">local_shipping</span>
+                <span>DEPOYU TAMAMEN DOLDUR (%100)</span>
+              </button>
+
+              {/* Depo & Vana Fizik Ayarları */}
+              <div className="p-4 rounded-2xl bg-slate-100 dark:bg-black/30 border border-border-light dark:border-border-dark">
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="material-symbols-outlined text-primary">engineering</span>
+                  <span className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">Depo & Vana Fizik Ayarları</span>
+                </div>
+
+                {/* Sehpa Yüksekliği */}
+                <div className="mb-4">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-xs font-bold text-slate-600 dark:text-slate-300">Sehpa Yüksekliği</span>
+                    <span className="text-xs font-black text-primary">{status.baseHeightMeters.toFixed(1)} m</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="2"
+                    step="0.1"
+                    value={status.baseHeightMeters}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value);
+                      setStatus(prev => ({ ...prev, baseHeightMeters: val }));
+                      if (user?.email) {
+                        updateUserSettings(user.email, { baseHeightMeters: val }).catch(console.error);
+                      }
+                    }}
+                    className="w-full h-2 bg-slate-200 dark:bg-border-dark rounded-lg appearance-none cursor-pointer accent-primary"
+                  />
+                </div>
+
+                {/* Net Su Yüksekliği */}
+                <div className="mb-4">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-xs font-bold text-slate-600 dark:text-slate-300">Net Su Yüksekliği</span>
+                    <span className="text-xs font-black text-primary">{status.netWaterHeightMeters.toFixed(1)} m</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="3"
+                    step="0.1"
+                    value={status.netWaterHeightMeters}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value);
+                      setStatus(prev => ({ ...prev, netWaterHeightMeters: val }));
+                      if (user?.email) {
+                        updateUserSettings(user.email, { netWaterHeightMeters: val }).catch(console.error);
+                      }
+                    }}
+                    className="w-full h-2 bg-slate-200 dark:bg-border-dark rounded-lg appearance-none cursor-pointer accent-primary"
+                  />
+                </div>
+
+                {/* Sulama Yöntemi Seçimi */}
+                <div className="mb-4">
+                  <span className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-2">Sulama Yöntemi</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => {
+                        setStatus(prev => ({ ...prev, irrigationType: 'drip' }));
+                        if (user?.email) {
+                          updateUserSettings(user.email, { irrigationType: 'drip' }).catch(console.error);
+                        }
+                      }}
+                      className={`py-2.5 px-3 rounded-xl text-xs font-black border transition-all flex items-center justify-center gap-2 ${
+                        (status.irrigationType || 'drip') === 'drip'
+                          ? 'bg-primary text-background-dark border-primary shadow-md'
+                          : 'border-border-light dark:border-border-dark text-slate-700 dark:text-slate-300 hover:bg-white/5'
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-base">water_drop</span>
+                      <span>Damla Sulama</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setStatus(prev => ({ ...prev, irrigationType: 'free_flow' }));
+                        if (user?.email) {
+                          updateUserSettings(user.email, { irrigationType: 'free_flow' }).catch(console.error);
+                        }
+                      }}
+                      className={`py-2.5 px-3 rounded-xl text-xs font-black border transition-all flex items-center justify-center gap-2 ${
+                        status.irrigationType === 'free_flow'
+                          ? 'bg-primary text-background-dark border-primary shadow-md'
+                          : 'border-border-light dark:border-border-dark text-slate-700 dark:text-slate-300 hover:bg-white/5'
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-base">waves</span>
+                      <span>Serbest Akış (Açık Boru)</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Damla Sulama Modunda: Damlatıcı Delik Sayısı */}
+                {(status.irrigationType || 'drip') === 'drip' ? (
+                  <div className="mb-4">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-xs font-bold text-slate-600 dark:text-slate-300">Damlatıcı / Delik Sayısı</span>
+                      <span className="text-xs font-black text-primary">{status.dripperCount || 300} Adet</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="20"
+                      max="3000"
+                      step="20"
+                      value={status.dripperCount || 300}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value, 10);
+                        setStatus(prev => ({ ...prev, dripperCount: val }));
+                        if (user?.email) {
+                          updateUserSettings(user.email, { dripperCount: val }).catch(console.error);
+                        }
+                      }}
+                      className="w-full h-2 bg-slate-200 dark:bg-border-dark rounded-lg appearance-none cursor-pointer accent-primary"
+                    />
+                    <div className="flex justify-between gap-1 mt-2">
+                      {[40, 100, 300, 500, 1000].map(cnt => (
+                        <button
+                          key={cnt}
+                          onClick={() => {
+                            setStatus(prev => ({ ...prev, dripperCount: cnt }));
+                            if (user?.email) {
+                              updateUserSettings(user.email, { dripperCount: cnt }).catch(console.error);
+                            }
+                          }}
+                          className={`px-2 py-1 rounded-lg text-[10px] font-black border transition-all ${
+                            (status.dripperCount || 300) === cnt
+                              ? 'bg-primary text-background-dark border-primary'
+                              : 'border-border-light dark:border-border-dark text-slate-600 dark:text-slate-300'
+                          }`}
+                        >
+                          {cnt} Adet
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Damlatıcı Debisi Seçimi */}
+                    <div className="mt-3">
+                      <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 block mb-1.5">Delik / Damlatıcı Tipi (Debi)</span>
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {[
+                          { lph: 2.0, label: '2 L/h' },
+                          { lph: 4.0, label: '4 L/h' },
+                          { lph: 8.0, label: '8 L/h' },
+                          { lph: 12.0, label: '12 L/h' }
+                        ].map(opt => (
+                          <button
+                            key={opt.lph}
+                            onClick={() => {
+                              setStatus(prev => ({ ...prev, dripperFlowRateLph: opt.lph }));
+                              if (user?.email) {
+                                updateUserSettings(user.email, { dripperFlowRateLph: opt.lph }).catch(console.error);
+                              }
+                            }}
+                            className={`py-1.5 rounded-lg text-[10px] font-black border transition-all ${
+                              (status.dripperFlowRateLph || 8.0) === opt.lph
+                                ? 'bg-primary text-background-dark border-primary shadow-sm'
+                                : 'border-border-light dark:border-border-dark text-slate-600 dark:text-slate-300 hover:bg-white/5'
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* Serbest Akış Modunda: Boru Uzunluğu */
+                  <div className="mb-4">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-xs font-bold text-slate-600 dark:text-slate-300">Boru / Hat Uzunluğu</span>
+                      <span className="text-xs font-black text-primary">{status.pipeLengthMeters || 20} m</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="5"
+                      max="100"
+                      step="5"
+                      value={status.pipeLengthMeters || 20}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value, 10);
+                        setStatus(prev => ({ ...prev, pipeLengthMeters: val }));
+                        if (user?.email) {
+                          updateUserSettings(user.email, { pipeLengthMeters: val }).catch(console.error);
+                        }
+                      }}
+                      className="w-full h-2 bg-slate-200 dark:bg-border-dark rounded-lg appearance-none cursor-pointer accent-primary"
+                    />
+                  </div>
+                )}
+
+                {/* Motorlu Vana Çapı (Sabit DN20 - 20mm) */}
+                <div className="flex items-center justify-between pt-2 border-t border-border-light/20 dark:border-white/5">
+                  <span className="text-xs font-bold text-slate-600 dark:text-slate-300">Motorlu Vana Çapı</span>
+                  <span className="text-xs font-black text-primary bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
+                    20 mm (DN20)
+                  </span>
+                </div>
+              </div>
+
+              {/* Hardware Status Tiles */}
               <div className="p-4 rounded-2xl bg-slate-100 dark:bg-black/30 border border-border-light dark:border-border-dark flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <span className="material-symbols-outlined text-primary">videocam</span>

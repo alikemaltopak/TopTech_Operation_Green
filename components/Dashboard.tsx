@@ -1,5 +1,5 @@
-
-import React, { useState, useEffect, useRef } from 'react';
+import { WaterIrrigationPhysicsEngine, InstantState } from '../lib/WaterIrrigationPhysicsEngine';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { GardenStatus } from '../types';
 import WeatherHero from './WeatherHero';
 import StatusTile from './StatusTile';
@@ -8,10 +8,12 @@ import ScheduleModal from './ScheduleModal';
 interface DashboardProps {
   status: GardenStatus;
   activeLandName: string;
-  onIrrigate: (minutes?: number) => void;
+  onIrrigate: (minutes?: number, forceState?: boolean) => void;
+  onRefillTank?: () => void;
   onUpdateSchedule: (time: string, day: string) => void;
   onToggleSchedule: () => void;
   currentSession?: { startTime: Date; durationMinutes?: number } | null;
+  onPhysicsUpdate?: (totalConsumedLiters: number) => void;
 }
 
 const PlantAnimation: React.FC<{ progress: number; isIrrigating: boolean }> = ({ progress, isIrrigating }) => {
@@ -137,7 +139,108 @@ const PlantAnimation: React.FC<{ progress: number; isIrrigating: boolean }> = ({
   );
 };
 
-const Dashboard: React.FC<DashboardProps> = ({ status, activeLandName, onIrrigate, onUpdateSchedule, onToggleSchedule, currentSession }) => {
+/* ─── Dairesel SVG Gauge Bileşeni ─── */
+const CircularGauge: React.FC<{ percentage: number; size?: number; strokeWidth?: number; label: string }> = ({ percentage, size = 100, strokeWidth = 8, label }) => {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference * (1 - Math.min(100, Math.max(0, percentage)) / 100);
+  
+  // Renk: yeşil → sarı → kırmızı
+  const getColor = (pct: number) => {
+    if (pct > 60) return '#22c55e';
+    if (pct > 30) return '#eab308';
+    if (pct > 10) return '#f97316';
+    return '#ef4444';
+  };
+  
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <div className="relative" style={{ width: size, height: size }}>
+        <svg width={size} height={size} className="-rotate-90">
+          {/* Background track */}
+          <circle
+            cx={size / 2} cy={size / 2} r={radius}
+            fill="transparent"
+            stroke="currentColor"
+            strokeWidth={strokeWidth}
+            className="text-slate-200 dark:text-border-dark opacity-40"
+          />
+          {/* Value arc */}
+          <circle
+            cx={size / 2} cy={size / 2} r={radius}
+            fill="transparent"
+            stroke={getColor(percentage)}
+            strokeWidth={strokeWidth}
+            strokeDasharray={circumference}
+            strokeDashoffset={offset}
+            strokeLinecap="round"
+            className="transition-all duration-700 ease-out"
+            style={{ filter: `drop-shadow(0 0 6px ${getColor(percentage)}40)` }}
+          />
+        </svg>
+        {/* Center text */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="text-xl font-black text-slate-900 dark:text-white tabular-nums leading-none">
+            %{Math.round(percentage)}
+          </span>
+        </div>
+      </div>
+      <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.15em]">{label}</span>
+    </div>
+  );
+};
+
+const Dashboard: React.FC<DashboardProps> = ({ status, activeLandName, onIrrigate, onRefillTank, onUpdateSchedule, onToggleSchedule, currentSession, onPhysicsUpdate }) => {
+  // ─── Physics Engine ───
+  const physicsEngineRef = useRef<WaterIrrigationPhysicsEngine | null>(null);
+  const [physicsState, setPhysicsState] = useState<InstantState | null>(null);
+  const irrigationStartRef = useRef<number | null>(null);
+  const [estimatedDrainMin, setEstimatedDrainMin] = useState<number>(0);
+
+  // Initialize engine when config changes
+  useEffect(() => {
+    const config = {
+      capacityLiters: status.tankCapacity,
+      baseHeightMeters: status.baseHeightMeters,
+      netWaterHeightMeters: status.netWaterHeightMeters,
+      pipeLengthMeters: status.pipeLengthMeters || 20,
+      irrigationType: status.irrigationType || 'drip',
+      dripperCount: status.dripperCount || 300,
+      valveSize: status.valveSize,
+    };
+    physicsEngineRef.current = new WaterIrrigationPhysicsEngine(config);
+    physicsEngineRef.current.resetTank(status.waterRemaining);
+    setEstimatedDrainMin(physicsEngineRef.current.getEstimatedDrainTimeMinutes());
+  }, [status.tankCapacity, status.baseHeightMeters, status.netWaterHeightMeters, status.pipeLengthMeters, status.irrigationType, status.dripperCount, status.valveSize, status.waterRemaining]);
+
+  // Physics timer — starts when irrigation begins, cleans up when it ends
+  useEffect(() => {
+    if (status.isIrrigating && physicsEngineRef.current) {
+      // Capture start time in ref (no re-render loop)
+      if (irrigationStartRef.current === null) {
+        physicsEngineRef.current.startIrrigation();
+        irrigationStartRef.current = Date.now();
+      }
+
+      const intervalId = window.setInterval(() => {
+        if (irrigationStartRef.current && physicsEngineRef.current) {
+          const elapsed = Math.floor((Date.now() - irrigationStartRef.current) / 1000);
+          const state = physicsEngineRef.current.calculateState(elapsed);
+          setPhysicsState(state);
+          // Report consumption to parent
+          onPhysicsUpdate?.(state.totalConsumedLiters);
+        }
+      }, 1000);
+
+      return () => window.clearInterval(intervalId);
+    } else {
+      // Irrigation stopped
+      irrigationStartRef.current = null;
+      setPhysicsState(null);
+    }
+  }, [status.isIrrigating, onPhysicsUpdate]);
+
+  // ─── Timer State ───
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [selectedMinutes, setSelectedMinutes] = useState(10);
   const [timeLeft, setTimeLeft] = useState(0);
@@ -151,7 +254,7 @@ const Dashboard: React.FC<DashboardProps> = ({ status, activeLandName, onIrrigat
   const startIrrigation = () => {
     if (!status.isIrrigating) {
       setTimeLeft(selectedMinutes * 60);
-      onIrrigate(selectedMinutes);
+      onIrrigate(selectedMinutes, true);
     } else {
       stopIrrigation();
     }
@@ -160,7 +263,7 @@ const Dashboard: React.FC<DashboardProps> = ({ status, activeLandName, onIrrigat
   const stopIrrigation = () => {
     if (timerRef.current) clearInterval(timerRef.current);
     setTimeLeft(0);
-    if (status.isIrrigating) onIrrigate();
+    if (status.isIrrigating) onIrrigate(undefined, false);
   };
 
   // Initialize timer on mount or when session changes
@@ -175,35 +278,29 @@ const Dashboard: React.FC<DashboardProps> = ({ status, activeLandName, onIrrigat
         setSelectedMinutes(currentSession.durationMinutes);
       } else {
         setTimeLeft(0);
-        onIrrigate(); // force stop if already expired
+        onIrrigate(undefined, false); // force stop if already expired
       }
     } else if (!status.isIrrigating) {
       setTimeLeft(0);
     }
-  }, [status.isIrrigating, currentSession]);
+  }, [status.isIrrigating, currentSession, onIrrigate]);
 
   // Handle countdown interval
   useEffect(() => {
     if (status.isIrrigating && timeLeft > 0) {
-      if (timerRef.current) clearInterval(timerRef.current);
-      
-      timerRef.current = setInterval(() => {
-        setTimeLeft(prev => {
-          if (prev <= 1) {
-            if (timerRef.current) clearInterval(timerRef.current);
-            onIrrigate();
-            return 0;
-          }
-          return prev - 1;
-        });
+      const interval = setInterval(() => {
+        setTimeLeft(prev => Math.max(0, prev - 1));
       }, 1000);
-    } else if (!status.isIrrigating) {
-      if (timerRef.current) clearInterval(timerRef.current);
+      return () => clearInterval(interval);
     }
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
   }, [status.isIrrigating, timeLeft > 0]);
+
+  // Trigger explicit stop when countdown reaches 0
+  useEffect(() => {
+    if (status.isIrrigating && timeLeft === 0 && irrigationStartRef.current !== null) {
+      onIrrigate(undefined, false);
+    }
+  }, [status.isIrrigating, timeLeft, onIrrigate]);
 
   const progress = (timeLeft === 0 && !status.isIrrigating) ? 0 : 
                    (timeLeft === 0 && status.isIrrigating) ? 0 : 
@@ -215,7 +312,10 @@ const Dashboard: React.FC<DashboardProps> = ({ status, activeLandName, onIrrigat
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const tankPercentage = Math.round((status.waterRemaining / status.tankCapacity) * 100);
+  const displayedWaterRemaining = physicsState && status.isIrrigating 
+    ? physicsState.remainingLiters 
+    : status.waterRemaining;
+  const tankPercentage = Math.round((displayedWaterRemaining / status.tankCapacity) * 100);
 
   return (
     <div className="animate-in fade-in duration-700 pb-12 overflow-x-hidden">
@@ -306,6 +406,122 @@ const Dashboard: React.FC<DashboardProps> = ({ status, activeLandName, onIrrigat
         </div>
       </div>
 
+      {/* ═══════ ANLIK SU ANALİZİ PANELİ (Torricelli Fizik Motoru) ═══════ */}
+      {physicsState && status.isIrrigating && (
+        <div className="mt-6 mx-1 animate-in slide-in-from-bottom-4 fade-in duration-700">
+          <div className="bg-surface-light dark:bg-surface-dark rounded-[2rem] border border-border-light dark:border-border-dark p-6 shadow-2xl relative overflow-hidden">
+            {/* Decorative top bar */}
+            <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-blue-500 via-cyan-400 to-blue-500"></div>
+            
+            {/* Header */}
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-xl bg-blue-500/15 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-blue-400 text-xl">science</span>
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">Anlık Su Analizi</h3>
+                  <p className="text-[9px] font-bold text-blue-400 uppercase tracking-[0.2em]">TORRİCELLİ İNTEGRAL MODELİ</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-ping"></span>
+                <span className="text-[9px] font-black text-blue-400 uppercase tracking-wider">CANLI</span>
+              </div>
+            </div>
+
+            {/* Gauge + Stats Grid */}
+            <div className="flex items-center gap-6 mb-5">
+              {/* Circular Gauge */}
+              <CircularGauge 
+                percentage={physicsState.percentage} 
+                size={110} 
+                strokeWidth={10} 
+                label="DEPO DOLULUK"
+              />
+              
+              {/* Flow Rate - Hero stat */}
+              <div className="flex-1 flex flex-col gap-3">
+                <div className="bg-slate-50 dark:bg-black/30 rounded-2xl p-4 border border-slate-100 dark:border-border-dark">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="material-symbols-outlined text-blue-400 text-base">speed</span>
+                    <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">ANLIK AKIŞ HIZI</span>
+                  </div>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-3xl font-black text-slate-900 dark:text-white tabular-nums leading-none">
+                      {physicsState.flowRateLitersPerMin.toFixed(1)}
+                    </span>
+                    <span className="text-xs font-black text-blue-400">L/dk</span>
+                  </div>
+                  <span className="text-[10px] font-bold text-slate-400 tabular-nums">
+                    ({physicsState.flowRateLitersPerSec.toFixed(2)} L/sn)
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Stats Grid */}
+            <div className="grid grid-cols-3 gap-3">
+              {/* Kalan Su */}
+              <div className="bg-slate-50 dark:bg-black/30 rounded-xl p-3 border border-slate-100 dark:border-border-dark text-center">
+                <span className="material-symbols-outlined text-cyan-400 text-lg mb-1 block">water_drop</span>
+                <span className="text-lg font-black text-slate-900 dark:text-white tabular-nums leading-none block">
+                  {physicsState.remainingLiters < 1000 
+                    ? `${Math.round(physicsState.remainingLiters)}` 
+                    : `${(physicsState.remainingLiters / 1000).toFixed(1)}k`}
+                </span>
+                <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider block mt-1">KALAN (L)</span>
+              </div>
+
+              {/* Toplam Tüketim */}
+              <div className="bg-slate-50 dark:bg-black/30 rounded-xl p-3 border border-slate-100 dark:border-border-dark text-center">
+                <span className="material-symbols-outlined text-orange-400 text-lg mb-1 block">local_fire_department</span>
+                <span className="text-lg font-black text-slate-900 dark:text-white tabular-nums leading-none block">
+                  {physicsState.totalConsumedLiters < 1000 
+                    ? `${Math.round(physicsState.totalConsumedLiters)}` 
+                    : `${(physicsState.totalConsumedLiters / 1000).toFixed(1)}k`}
+                </span>
+                <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider block mt-1">TÜKETİM (L)</span>
+              </div>
+
+              {/* Tahmini Boşalma */}
+              <div className="bg-slate-50 dark:bg-black/30 rounded-xl p-3 border border-slate-100 dark:border-border-dark text-center">
+                <span className="material-symbols-outlined text-amber-400 text-lg mb-1 block">timer</span>
+                <span className="text-lg font-black text-slate-900 dark:text-white tabular-nums leading-none block">
+                  {estimatedDrainMin < 60 
+                    ? `${Math.round(estimatedDrainMin)}` 
+                    : `${Math.floor(estimatedDrainMin / 60)}s ${Math.round(estimatedDrainMin % 60)}`}
+                </span>
+                <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider block mt-1">
+                  {estimatedDrainMin < 60 ? 'BOŞALMA (DK)' : 'BOŞALMA'}
+                </span>
+              </div>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="mt-4">
+              <div className="flex justify-between text-[9px] font-bold text-slate-400 mb-1.5">
+                <span>DEPO SEVİYESİ</span>
+                <span className="tabular-nums">{physicsState.remainingLiters.toFixed(0)}L / {status.tankCapacity}L</span>
+              </div>
+              <div className="h-2.5 w-full bg-slate-100 dark:bg-border-dark rounded-full overflow-hidden">
+                <div 
+                  className="h-full rounded-full transition-all duration-700 ease-out"
+                  style={{ 
+                    width: `${physicsState.percentage}%`,
+                    background: physicsState.percentage > 60 
+                      ? 'linear-gradient(90deg, #22c55e, #4ade80)' 
+                      : physicsState.percentage > 30 
+                        ? 'linear-gradient(90deg, #eab308, #facc15)' 
+                        : 'linear-gradient(90deg, #ef4444, #f87171)'
+                  }}
+                ></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Grid Status Tiles */}
       <div className="grid grid-cols-2 gap-4 mt-8 px-1">
         <StatusTile 
@@ -341,30 +557,48 @@ const Dashboard: React.FC<DashboardProps> = ({ status, activeLandName, onIrrigat
           </div>
         </div>
         
-        {/* Tank Level Card Updated - Label and Sub-label cleanup */}
-        <div className="col-span-2 flex items-center justify-between gap-4 rounded-3xl border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark p-6 shadow-sm relative overflow-hidden">
-          <div className="flex items-center gap-6">
-            <div className="h-16 w-16 rounded-2xl bg-blue-500/10 flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-blue-400 text-4xl">database</span>
-            </div>
-            <div className="flex flex-col">
-              <div className="flex items-baseline gap-2">
-                <h2 className="text-3xl font-black text-slate-900 dark:text-white">{status.waterRemaining.toFixed(1)}L</h2>
-                <span className="text-[10px] font-black text-blue-400 tracking-widest uppercase">MEVCUT DOLULUK</span>
+        {/* Tank Level Card */}
+        <div className="col-span-2 flex flex-col gap-4 rounded-3xl border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark p-6 shadow-sm relative overflow-hidden">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-5">
+              <div className="h-14 w-14 rounded-2xl bg-blue-500/10 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-blue-400 text-3xl">database</span>
               </div>
-              <p className="text-[9px] text-slate-700 dark:text-[#92c9a4] font-bold uppercase tracking-[0.2em] mt-1 opacity-70">Sistem Kapasite Verisi</p>
+              <div className="flex flex-col">
+                <div className="flex items-baseline gap-2">
+                  <h2 className="text-2xl font-black text-slate-900 dark:text-white">{displayedWaterRemaining.toFixed(1)}L</h2>
+                  <span className="text-[10px] font-black text-blue-400 tracking-widest uppercase">MEVCUT DOLULUK</span>
+                </div>
+                <p className="text-[9px] text-slate-700 dark:text-[#92c9a4] font-bold uppercase tracking-[0.2em] mt-0.5 opacity-70">
+                  {status.tankCapacity}L Kapasite
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex flex-col items-end">
+              <span className="text-3xl font-black text-slate-900 dark:text-white tabular-nums">%{tankPercentage}</span>
+              <div className="w-16 h-1 bg-slate-100 dark:bg-border-dark rounded-full mt-1.5 overflow-hidden">
+                  <div 
+                      className="h-full bg-blue-400 transition-all duration-1000" 
+                      style={{ width: `${tankPercentage}%` }}
+                  ></div>
+              </div>
             </div>
           </div>
-          
-          <div className="flex flex-col items-end">
-            <span className="text-4xl font-black text-slate-900 dark:text-white tabular-nums">%{tankPercentage}</span>
-            <div className="w-16 h-1 bg-slate-100 dark:bg-border-dark rounded-full mt-2 overflow-hidden">
-                <div 
-                    className="h-full bg-blue-400 transition-all duration-1000" 
-                    style={{ width: `${tankPercentage}%` }}
-                ></div>
-            </div>
-          </div>
+
+          {/* Depo Doldur Butonu */}
+          {onRefillTank && (
+            <button
+              onClick={() => {
+                onRefillTank();
+                physicsEngineRef.current?.resetTank(status.tankCapacity);
+              }}
+              className="w-full py-2.5 rounded-2xl bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-400 text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all active:scale-95 shadow-sm"
+            >
+              <span className="material-symbols-outlined text-base">local_shipping</span>
+              <span>DEPOYU TAMAMEN DOLDUR (%100)</span>
+            </button>
+          )}
         </div>
       </div>
 

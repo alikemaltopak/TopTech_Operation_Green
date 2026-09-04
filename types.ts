@@ -23,6 +23,13 @@ export interface GardenStatus {
   waterSaved: number;
   waterRemaining: number;
   tankCapacity: number; // Added for user-defined tank capacity
+  baseHeightMeters: number; // Sehpa yüksekliği (m) — fizik motoru için
+  netWaterHeightMeters: number; // Net su yüksekliği (m) — fizik motoru için
+  pipeLengthMeters: number; // Boru / tesisat hat uzunluğu (m) — fizik motoru için
+  irrigationType: 'drip' | 'free_flow'; // Sulama tipi (Damla Sulama veya Serbest Akış)
+  dripperCount: number; // Damla sulamada delik / damlatıcı sayısı
+  dripperFlowRateLph: number; // Damlatıcı başına debi (L/saat, ör. 2, 4, 8, 12)
+  valveSize: 'DN15' | 'DN20' | 'DN25'; // Vana çapı — fizik motoru için
   nextSchedule: string;
   nextScheduleDay: string;
   isIrrigating: boolean;
@@ -52,4 +59,6 @@ export interface IrrigationSession {
   endTime: string; // HH:mm:ss
   duration: string;
   icon: string;
+  totalConsumedLiters?: number; // Fizik motorundan hesaplanan toplam tüketim
 }
+
