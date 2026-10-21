@@ -44,6 +44,69 @@ Uygulama, arazideki GSM modüllü sulama kontrol cihazlarına **SMS komutları**
 
 ---
 
+## ⚙️ Nasıl Çalışır?
+
+### Genel mimari
+
+```mermaid
+flowchart LR
+    U([👨‍🌾 Kullanıcı]) --> APP[🌐 React Web Uygulaması]
+    APP -- "sms: ON10 / OFF / SETALARM" --> SMS[📨 Telefonun SMS uygulaması]
+    SMS -- GSM şebekesi --> DEV[🔌 Tarladaki GSM kontrol cihazı]
+    DEV --> V[🚰 Vana / pompa]
+    APP <-- "giriş (e-posta / Google)" --> AUTH[🔐 Firebase Auth]
+    APP <-- "araziler, geçmiş, ayarlar (canlı)" --> FS[(🔥 Firestore)]
+    APP -- "profil fotoğrafı" --> ST[(🗂️ Firebase Storage)]
+    APP -- "enlem, boylam" --> OM[🌤️ Open-Meteo<br/>anahtar gerektirmez]
+    APP --> PE[🧮 Fizik motoru<br/>Torricelli · debi & depo]
+```
+
+### Manuel sulama oturumu
+
+```mermaid
+sequenceDiagram
+    actor K as Kullanıcı
+    participant P as Panel
+    participant M as Fizik motoru
+    participant S as SMS uygulaması
+    participant C as GSM cihazı
+    participant F as Firestore
+
+    K->>P: Süre seç (ör. 10 dk), BAŞLAT
+    P->>S: sms:+90555…?body=ON10
+    S->>C: "ON10" → vana açılır
+    loop Her saniye
+        P->>M: calculateState(geçen süre)
+        M-->>P: anlık debi (L/dk), kalan su, tüketim
+        P-->>K: Geri sayım + canlı su analizi
+    end
+    alt Süre doldu veya DURDUR
+        P->>S: sms:+90555…?body=OFF
+        S->>C: "OFF" → vana kapanır
+        P->>F: history'ye oturum (başlangıç, bitiş, süre, litre)
+        P->>F: waterRemaining = kalan su
+    end
+```
+
+### Otomatik zamanlama
+
+```mermaid
+flowchart TD
+    A[Sonraki Oturum kutucuğu] --> B[Saat, gün ve süre seç]
+    B --> C["SETALARM:GG.AA.YY-SS.DD,SS.DD SMS'i<br/>cihazın saatine alarm kurar"]
+    B --> D[(Firestore: nextSchedule, isScheduleActive)]
+    D --> E{Uygulama açık ve<br/>saat geldi mi?}
+    E -- Evet --> F[🔔 Uygulama içi + tarayıcı bildirimi]
+    F --> G[10 dk sulama: ON10 → süre sonunda OFF]
+    G --> H[(Geçmişe kayıt)]
+```
+
+### Su hesabı (fizik motoru)
+
+Depodan akan su, basınç yüksekliğine bağlı olarak azalır (Torricelli): depo boşaldıkça debi düşer. Varsayılan 3000 L depo, 0.5 m sehpa ve 300 adet 8 L/sa damlatıcı ile başlangıç debisi **≈18.5 L/dk**'dır. Sehpa yüksekliği, su yüksekliği, sulama tipi (damla / serbest akış), damlatıcı sayısı-debisi ve boru uzunluğu **Ayarlar → Sistem Bilgisi**'nden değiştirilebilir; panel anlık debi, kalan su ve tahmini boşalma süresini canlı gösterir.
+
+---
+
 ## ✨ Özellikler
 
 ### 🌱 Sulama Yönetimi
