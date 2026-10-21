@@ -136,7 +136,10 @@ toptech-operasyon-yeşili/
 ├── lib/
 │   ├── firebase.ts          # Firebase istemci ilklendirmesi (Auth, Firestore, Storage)
 │   ├── db.ts                # Firestore CRUD ve gerçek zamanlı abonelik fonksiyonları
-│   └── themes.ts            # 11 tema konfigürasyonu (renk, doku, ikon, radius)
+│   ├── themes.ts            # 11 tema konfigürasyonu (renk, doku, ikon, radius)
+│   └── WaterIrrigationPhysicsEngine.ts # Torricelli tabanlı depo boşalma / debi hesabı
+│
+├── tests/                   # Vitest + Testing Library otomatik testleri
 │
 ├── components/
 │   ├── LoginView.tsx        # Giriş/Kayıt ekranı (Firebase Auth + Google OAuth)
@@ -231,6 +234,8 @@ Uygulama varsayılan olarak `http://localhost:5173` adresinde açılacaktır.
 | `npm run build` | Üretim için derleme yapar (`dist/` klasörüne) |
 | `npm run preview` | Derlenmiş sürümü önizler |
 | `npm run lint` | TypeScript tip kontrolü (`tsc --noEmit`) |
+| `npm test` | Tüm otomatik testleri çalıştırır (Vitest) |
+| `npm run test:watch` | Testleri izleme modunda çalıştırır |
 
 ---
 
@@ -324,6 +329,43 @@ GET https://api.open-meteo.com/v1/forecast
   &daily=weathercode,temperature_2m_max,temperature_2m_min
   &timezone=auto
 ```
+
+---
+
+## 🧪 Testler ve Doğrulama Sonuçları
+
+Uygulamanın README'de vaat ettiği davranışları **gerçekten** yapıp yapmadığını doğrulayan otomatik test paketi [Vitest](https://vitest.dev) + [Testing Library](https://testing-library.com) ile yazılmıştır. Firebase ve tarayıcı API'leri (SMS `sms:` yönlendirmesi, `fetch`, `localStorage`) taklit edilerek uçtan uca kullanıcı akışları jsdom üzerinde çalıştırılır.
+
+```bash
+npm test
+```
+
+### Son çalıştırma sonucu
+
+> 21 Ekim 2026 · Node.js 22 · Vitest 3.2 — **8 dosya, 84 test, 84 başarılı ✅, 0 başarısız**
+
+| Test dosyası | Test | Sonuç | Doğrulanan davranış |
+|---|:-:|:-:|---|
+| `tests/physics.test.ts` | 11 | ✅ | Torricelli fizik motoru: başlangıç debisi (300 damlatıcı × 8 L/sa → ~18.5 L/dk), kütle korunumu, sayısal integral ile kapalı form çözümünün örtüşmesi, boşalma süresi, kısmi depo, damla/serbest akış ve boru uzunluğu etkisi |
+| `tests/db.test.ts` | 7 | ✅ | Firestore yolları (`users/{id}/lands`, `users/{id}/history`), yeni kullanıcıya varsayılan ayarlar, mevcut kullanıcının ayarlarının ezilmemesi, arazi CRUD, geçmiş kaydı, gerçek zamanlı dinleyiciler |
+| `tests/themes.test.ts` | 22 | ✅ | 11 temanın varlığı, README'deki vurgu renkleri, geçerli hex renk/radius/ikonlar, doku görsellerinin `public/` altında bulunması |
+| `tests/ScheduleModal.test.tsx` | 7 | ✅ | `SETALARM:GG.AA.YY-SS.DD,SS.DD` komutu, süreye göre kapanış saati, gece yarısı geçişi, 1–180 dk sınırı, geçmiş günlerin seçilememesi, SMS'in doğru numaraya gitmesi, numara yoksa uyarı |
+| `tests/Dashboard.test.tsx` | 11 | ✅ | Süre ayarı (–/+ 1–120 dk, 5/10/15/30 ön ayarları), BAŞLAT/DURDUR, geri sayım bitince otomatik durdurma, canlı su tüketimi, depo yüzdesi, nem etiketi, zamanlama anahtarı |
+| `tests/LandsView.test.tsx` | 7 | ✅ | Arazi listeleme, seçme, ekleme (ad + GSM no + koordinat), düzenleme, onaylı silme, hata bildirimi |
+| `tests/HistoryView.test.tsx` | 5 | ✅ | Takvimde sulama günlerinin işaretlenmesi, gün/ay filtreleme, ay gezintisi, seans detayları (başlangıç/bitiş/süre/litre) |
+| `tests/App.test.tsx` | 14 | ✅ | **Uçtan uca senaryolar:** BAŞLAT → `ON10` SMS, DURDUR → `OFF` SMS ve geçmişe kayıt + depodan düşüm; süre dolunca otomatik `OFF`; otomatik zamanlama saatinde bildirim + 10 dk sulama; Open-Meteo sorgusu ve 5 günlük tahmin; arazi değişince hava durumunun yenilenmesi; tema kalıcılığı; tank kapasitesi; depo doldurma; damlatıcı debisi ayarının akışa etkisi |
+
+### Testlerin ortaya çıkardığı hatalar
+
+| # | Bulgu | Durum |
+|---|---|---|
+| 1 | **Otomatik zamanlama hemen kapanıyordu:** Planlanan saatte `ON10` SMS'i gönderildikten hemen sonra `OFF` gönderiliyor ve geçmişe `0 dk 0 sn` kaydediliyordu (geri sayım henüz başlamadan "süre doldu" kontrolü tetikleniyordu). | ✅ Düzeltildi — `components/Dashboard.tsx` |
+| 2 | **Damlatıcı debisi (2/4/8/12 L/h) ayarı etkisizdi:** Ayar Firestore'a kaydediliyor ama fizik motoruna iletilmediği için akış hızı her zaman 8 L/h ile hesaplanıyordu. | ✅ Düzeltildi — `components/Dashboard.tsx` |
+| 3 | Geçmiş detayında ay adı `toUpperCase()` ile büyütüldüğü için "EKİM" yerine "EKIM" görünüyor (`toLocaleUpperCase('tr-TR')` kullanılmalı). | ⚠️ Kozmetik, açık |
+
+### Test kapsamı dışında kalanlar
+
+Gerçek Firebase Authentication (e-posta / Google OAuth) girişi, profil fotoğrafı yükleme (Firebase Storage), tarayıcı push bildiriminin fiilen gösterilmesi, telefonda SMS uygulamasının açılıp mesajın cihaza ulaşması ve canlı Open-Meteo yanıtları otomatik testlerde taklit edilmiştir; bunlar için gerçek cihazda manuel doğrulama önerilir.
 
 ---
 

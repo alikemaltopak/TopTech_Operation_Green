@@ -207,12 +207,13 @@ const Dashboard: React.FC<DashboardProps> = ({ status, activeLandName, activeLan
       pipeLengthMeters: status.pipeLengthMeters || 20,
       irrigationType: status.irrigationType || 'drip',
       dripperCount: status.dripperCount || 300,
+      dripperFlowRateLph: status.dripperFlowRateLph || 8.0,
       valveSize: status.valveSize,
     };
     physicsEngineRef.current = new WaterIrrigationPhysicsEngine(config);
     physicsEngineRef.current.resetTank(status.waterRemaining);
     setEstimatedDrainMin(physicsEngineRef.current.getEstimatedDrainTimeMinutes());
-  }, [status.tankCapacity, status.baseHeightMeters, status.netWaterHeightMeters, status.pipeLengthMeters, status.irrigationType, status.dripperCount, status.valveSize, status.waterRemaining]);
+  }, [status.tankCapacity, status.baseHeightMeters, status.netWaterHeightMeters, status.pipeLengthMeters, status.irrigationType, status.dripperCount, status.dripperFlowRateLph, status.valveSize, status.waterRemaining]);
 
   // Physics timer — starts when irrigation begins, cleans up when it ends
   useEffect(() => {
@@ -298,10 +299,15 @@ const Dashboard: React.FC<DashboardProps> = ({ status, activeLandName, activeLan
 
   // Trigger explicit stop when countdown reaches 0
   useEffect(() => {
-    if (status.isIrrigating && timeLeft === 0 && irrigationStartRef.current !== null) {
+    // Sulama Dashboard dışından (otomatik zamanlama) başlatıldığında timeLeft henüz 0'dır;
+    // oturumun süresi gerçekten dolmadıysa durdurma.
+    const sessionSecondsLeft = currentSession?.durationMinutes
+      ? currentSession.durationMinutes * 60 - Math.floor((Date.now() - currentSession.startTime.getTime()) / 1000)
+      : 0;
+    if (status.isIrrigating && timeLeft === 0 && irrigationStartRef.current !== null && sessionSecondsLeft <= 0) {
       onIrrigate(undefined, false);
     }
-  }, [status.isIrrigating, timeLeft, onIrrigate]);
+  }, [status.isIrrigating, timeLeft, onIrrigate, currentSession]);
 
   const progress = (timeLeft === 0 && !status.isIrrigating) ? 0 : 
                    (timeLeft === 0 && status.isIrrigating) ? 0 : 
