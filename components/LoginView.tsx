@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
 
 interface LoginViewProps {
@@ -20,7 +20,9 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
       if (isLogin) {
         await signInWithEmailAndPassword(auth, email, password);
       } else {
-        await createUserWithEmailAndPassword(auth, email, password);
+        const credential = await createUserWithEmailAndPassword(auth, email, password);
+        // Hesap, e-posta doğrulanana kadar verilere erişemez (bkz. VerifyEmailView ve firestore.rules)
+        await sendEmailVerification(credential.user);
       }
       onLogin(email);
     } catch (error: any) {

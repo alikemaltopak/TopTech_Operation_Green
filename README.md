@@ -405,7 +405,7 @@ npm test
 
 ### Son çalıştırma sonucu
 
-> 21 Ekim 2026 · Node.js 22 · Vitest 3.2 — **8 dosya, 84 test, 84 başarılı ✅, 0 başarısız**
+> 22 Ekim 2026 · Node.js 22 · Vitest 3.2 — **9 dosya, 88 test, 88 başarılı ✅, 0 başarısız** (+ emülatörde 12 güvenlik kuralı testi)
 
 | Test dosyası | Test | Sonuç | Doğrulanan davranış |
 |---|:-:|:-:|---|
@@ -416,7 +416,9 @@ npm test
 | `tests/Dashboard.test.tsx` | 11 | ✅ | Süre ayarı (–/+ 1–120 dk, 5/10/15/30 ön ayarları), BAŞLAT/DURDUR, geri sayım bitince otomatik durdurma, canlı su tüketimi, depo yüzdesi, nem etiketi, zamanlama anahtarı |
 | `tests/LandsView.test.tsx` | 7 | ✅ | Arazi listeleme, seçme, ekleme (ad + GSM no + koordinat), düzenleme, onaylı silme, hata bildirimi |
 | `tests/HistoryView.test.tsx` | 5 | ✅ | Takvimde sulama günlerinin işaretlenmesi, gün/ay filtreleme, ay gezintisi, seans detayları (başlangıç/bitiş/süre/litre) |
-| `tests/App.test.tsx` | 14 | ✅ | **Uçtan uca senaryolar:** BAŞLAT → `ON10` SMS, DURDUR → `OFF` SMS ve geçmişe kayıt + depodan düşüm; süre dolunca otomatik `OFF`; otomatik zamanlama saatinde bildirim + 10 dk sulama; Open-Meteo sorgusu ve 5 günlük tahmin; arazi değişince hava durumunun yenilenmesi; tema kalıcılığı; tank kapasitesi; depo doldurma; damlatıcı debisi ayarının akışa etkisi |
+| `tests/App.test.tsx` | 16 | ✅ | **Güvenlik:** doğrulanmamış e-postayla veri yüklenmemesi ve doğrulama akışı; profil fotoğrafının kullanıcı kimliği altına yüklenmesi, resim olmayan/büyük dosyanın reddi. |
+| `tests/LoginView.test.tsx` | 2 | ✅ | Yeni hesapta doğrulama e-postası gönderilmesi |
+| `tests/App.test.tsx` (devam) | | ✅ | **Uçtan uca senaryolar:** BAŞLAT → `ON10` SMS, DURDUR → `OFF` SMS ve geçmişe kayıt + depodan düşüm; süre dolunca otomatik `OFF`; otomatik zamanlama saatinde bildirim + 10 dk sulama; Open-Meteo sorgusu ve 5 günlük tahmin; arazi değişince hava durumunun yenilenmesi; tema kalıcılığı; tank kapasitesi; depo doldurma; damlatıcı debisi ayarının akışa etkisi |
 
 ### Testlerin ortaya çıkardığı hatalar
 
@@ -429,6 +431,38 @@ npm test
 ### Test kapsamı dışında kalanlar
 
 Gerçek Firebase Authentication (e-posta / Google OAuth) girişi, profil fotoğrafı yükleme (Firebase Storage), tarayıcı push bildiriminin fiilen gösterilmesi, telefonda SMS uygulamasının açılıp mesajın cihaza ulaşması ve canlı Open-Meteo yanıtları otomatik testlerde taklit edilmiştir; bunlar için gerçek cihazda manuel doğrulama önerilir.
+
+---
+
+## 🔐 Güvenlik ve Kullanıcı Verileri
+
+Bu uygulama Firebase projesini (`toptech-717ee`) Flutter uygulamasıyla (TopTech reposu) paylaşır; iki uygulamanın kuralları tek bir `firestore.rules` dosyasındadır ve dosya iki repoda **aynıdır**.
+
+| Veri | Yol | Kim erişebilir? |
+|---|---|---|
+| Ayarlar, araziler (GSM numarası, konum), sulama geçmişi | `users/{e-postadan üretilen kimlik}/…` | Sadece o e-postanın **doğrulanmış** sahibi |
+| Profil fotoğrafı | Storage `profiles/{uid}/…` | Yükleme: sadece sahibi (sadece resim, ≤ 5 MB) · Görüntüleme: giriş yapmış kullanıcılar |
+| Flutter uygulamasının verileri | `artifacts/remote-irrigation-app/…` | Sadece yönetici tarafından yetkilendirilmiş Flutter hesapları |
+
+- **E-posta doğrulaması zorunludur.** Yeni hesap açılınca doğrulama e-postası gönderilir; doğrulanana kadar uygulama veri yüklemez ve kurallar erişimi reddeder. Google ile girişte e-posta zaten doğrulanmıştır.
+- Kullanıcı kimliği e-postadan üretildiği için (`ali.k@x.com` → `ali_k_x_com`) farklı adresler aynı kimliğe düşebilir (`ali_k@x.com`). Doğrulama şartı sayesinde bir kimliği sadece gerçek e-posta sahibi kullanabilir.
+
+### Kuralları yayınlama
+
+```bash
+firebase deploy --only firestore:rules,storage
+```
+veya Firebase konsolu → Firestore → Rules ve Storage → Rules sayfalarına `firestore.rules` ve `storage.rules` içeriğini yapıştırın.
+
+> ⚠️ E-posta/şifre ile kayıt olmuş ama e-postasını hiç doğrulamamış mevcut kullanıcılar, kurallar yayınlandıktan sonra ilk girişte doğrulama ekranını görür ve doğrulayana kadar verilerine erişemez.
+
+### Kural testleri
+
+```bash
+npm run test:rules   # Firestore + Storage emülatörü (Java gerekir)
+```
+
+> Son çalıştırma (22 Ekim 2026): **12/12 başarılı ✅**. Aynı testler önceki canlı kuralla (`request.auth != null` ile her şeye izin) çalıştırıldığında **7'si başarısız** oluyordu: giriş yapmış herhangi bir kullanıcı başkalarının arazilerini, telefon numaralarını ve geçmişini okuyup silebiliyordu.
 
 ---
 

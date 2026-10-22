@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "lint": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:rules": "npx --yes firebase-tools@14 emulators:exec --only firestore,storage --project toptech-rules-test \"vitest run --config rules-tests/vitest.config.ts\""
   },
   "dependencies": {
     "firebase": "^12.12.1",
@@ -18,6 +19,7 @@
     "react-dom": "^19.2.4"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.8",

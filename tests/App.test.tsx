@@ -6,6 +6,14 @@ import { render, screen, fireEvent, act, within } from '@testing-library/react';
 const mocks = vi.hoisted(() => ({
   lands: [] as unknown[],
   settings: null as Record<string, unknown> | null,
+  authUser: null as any,
+  auth: { currentUser: null as any },
+  storage: {
+    ref: vi.fn((_s: unknown, path: string) => ({ path })),
+    uploadBytes: vi.fn(async () => {}),
+    getDownloadURL: vi.fn(async () => 'https://storage/foto.png'),
+  },
+  sendEmailVerification: vi.fn(async () => {}),
   db: {
     subscribeToLands: vi.fn(),
     subscribeToHistory: vi.fn(),
@@ -19,19 +27,21 @@ const mocks = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('../lib/firebase', () => ({ auth: { currentUser: null }, storage: {}, db: {}, googleProvider: {} }));
+vi.mock('../lib/firebase', () => ({ auth: mocks.auth, storage: {}, db: {}, googleProvider: {} }));
 vi.mock('firebase/auth', () => ({
   onAuthStateChanged: (_auth: unknown, cb: (u: unknown) => void) => {
-    cb({ email: 'ciftci@example.com', photoURL: null });
+    mocks.auth.currentUser = mocks.authUser;
+    cb(mocks.authUser);
     return () => {};
   },
   signOut: vi.fn(),
-  updateProfile: vi.fn(),
+  updateProfile: vi.fn(async () => {}),
   signInWithPopup: vi.fn(),
   signInWithEmailAndPassword: vi.fn(),
-  createUserWithEmailAndPassword: vi.fn(),
+  createUserWithEmailAndPassword: vi.fn(async () => ({ user: { uid: 'yeni', email: 'yeni@example.com' } })),
+  sendEmailVerification: mocks.sendEmailVerification,
 }));
-vi.mock('firebase/storage', () => ({ ref: vi.fn(), uploadBytes: vi.fn(), getDownloadURL: vi.fn() }));
+vi.mock('firebase/storage', () => mocks.storage);
 vi.mock('../lib/db', () => mocks.db);
 
 import App from '../App';
@@ -56,6 +66,7 @@ let fetchMock: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.authUser = { uid: 'u1', email: 'ciftci@example.com', emailVerified: true, photoURL: null };
   mocks.lands = LANDS;
   mocks.settings = { tankCapacity: 3000, waterRemaining: 3000, isScheduleActive: false, nextSchedule: '05:30', nextScheduleDay: 'Belirtilmedi' };
   mocks.db.subscribeToLands.mockImplementation((_e: string, cb: (l: unknown[]) => void) => { cb(mocks.lands); return () => {}; });
@@ -279,5 +290,54 @@ describe('App — uçtan uca kullanım senaryoları', () => {
     const flow2 = await measureFlow(2);
     expect(flow8).toBeGreaterThan(10);
     expect(flow2).toBeCloseTo(flow8 / 4, 0);
+  });
+
+  it('güvenlik: e-postası doğrulanmamış hesap verilere erişemez, doğrulama ekranı gösterilir', async () => {
+    mocks.authUser = { uid: 'u9', email: 'yeni@example.com', emailVerified: false, photoURL: null,
+      reload: vi.fn(async () => {}), getIdToken: vi.fn(async () => 'token') };
+    await renderApp();
+    expect(screen.getByText('E-postanızı doğrulayın')).toBeInTheDocument();
+    expect(mocks.db.updateUserDocument).not.toHaveBeenCalled();
+    expect(mocks.db.subscribeToLands).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: /tekrar gönder/ }));
+    await flush();
+    expect(mocks.sendEmailVerification).toHaveBeenCalledWith(mocks.authUser);
+
+    // Henüz doğrulamadı
+    fireEvent.click(screen.getByRole('button', { name: /DOĞRULADIM/ }));
+    await flush();
+    expect(screen.getByText(/henüz doğrulanmamış/)).toBeInTheDocument();
+
+    // Doğruladıktan sonra uygulama açılır ve veriler yüklenir
+    mocks.authUser.emailVerified = true;
+    fireEvent.click(screen.getByRole('button', { name: /DOĞRULADIM/ }));
+    await flush();
+    await flush();
+    expect(mocks.authUser.getIdToken).toHaveBeenCalledWith(true);
+    expect(mocks.db.updateUserDocument).toHaveBeenCalledWith('yeni@example.com');
+  });
+
+  it('güvenlik: profil fotoğrafı kullanıcı kimliği altına yüklenir; resim olmayan veya büyük dosya reddedilir', async () => {
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+    const { container } = await renderApp();
+    clickTab('Ayarlar');
+    fireEvent.click(screen.getByText('Aktif Kullanıcı').closest('div.cursor-pointer')!);
+    const input = container.ownerDocument.querySelector('input[type="file"]') as HTMLInputElement;
+
+    const big = new File([new Uint8Array(6 * 1024 * 1024)], 'buyuk.png', { type: 'image/png' });
+    fireEvent.change(input, { target: { files: [big] } });
+    const html = new File(['<script>'], 'x.html', { type: 'text/html' });
+    fireEvent.change(input, { target: { files: [html] } });
+    expect(mocks.storage.uploadBytes).not.toHaveBeenCalled();
+
+    const photo = new File([new Uint8Array(100)], 'foto.png', { type: 'image/png' });
+    fireEvent.change(input, { target: { files: [photo] } });
+    await flush();
+    await flush();
+    const path = (mocks.storage.ref.mock.calls[0] as unknown as [unknown, string])[1];
+    expect(path).toMatch(/^profiles\/u1\/\d+$/);
+    expect(path).not.toContain('@');
+    alertSpy.mockRestore();
   });
 });
