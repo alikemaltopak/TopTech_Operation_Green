@@ -416,9 +416,8 @@ npm test
 | `tests/Dashboard.test.tsx` | 11 | ✅ | Süre ayarı (–/+ 1–120 dk, 5/10/15/30 ön ayarları), BAŞLAT/DURDUR, geri sayım bitince otomatik durdurma, canlı su tüketimi, depo yüzdesi, nem etiketi, zamanlama anahtarı |
 | `tests/LandsView.test.tsx` | 7 | ✅ | Arazi listeleme, seçme, ekleme (ad + GSM no + koordinat), düzenleme, onaylı silme, hata bildirimi |
 | `tests/HistoryView.test.tsx` | 5 | ✅ | Takvimde sulama günlerinin işaretlenmesi, gün/ay filtreleme, ay gezintisi, seans detayları (başlangıç/bitiş/süre/litre) |
-| `tests/App.test.tsx` | 16 | ✅ | **Güvenlik:** doğrulanmamış e-postayla veri yüklenmemesi ve doğrulama akışı; profil fotoğrafının kullanıcı kimliği altına yüklenmesi, resim olmayan/büyük dosyanın reddi. |
+| `tests/App.test.tsx` | 16 | ✅ | **Uçtan uca senaryolar:** BAŞLAT → `ON10` SMS, DURDUR → `OFF` SMS ve geçmişe kayıt + depodan düşüm; süre dolunca otomatik `OFF`; otomatik zamanlama saatinde bildirim + 10 dk sulama; Open-Meteo sorgusu ve 5 günlük tahmin; arazi değişince hava durumunun yenilenmesi; tema kalıcılığı; tank kapasitesi; depo doldurma; damlatıcı debisi ayarının akışa etkisi; **Güvenlik:** doğrulanmamış e-postayla veri yüklenmemesi ve doğrulama akışı; profil fotoğrafının kullanıcı kimliği altına yüklenmesi, resim olmayan/büyük dosyanın reddi. |
 | `tests/LoginView.test.tsx` | 2 | ✅ | Yeni hesapta doğrulama e-postası gönderilmesi |
-| `tests/App.test.tsx` (devam) | | ✅ | **Uçtan uca senaryolar:** BAŞLAT → `ON10` SMS, DURDUR → `OFF` SMS ve geçmişe kayıt + depodan düşüm; süre dolunca otomatik `OFF`; otomatik zamanlama saatinde bildirim + 10 dk sulama; Open-Meteo sorgusu ve 5 günlük tahmin; arazi değişince hava durumunun yenilenmesi; tema kalıcılığı; tank kapasitesi; depo doldurma; damlatıcı debisi ayarının akışa etkisi |
 
 ### Testlerin ortaya çıkardığı hatalar
 
