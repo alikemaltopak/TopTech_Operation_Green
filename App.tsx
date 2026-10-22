@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { NavTab, GardenStatus, Land, WeatherCondition, ForecastDay, IrrigationSession } from './types';
 import { subscribeToLands, subscribeToHistory, addHistorySession, addLand, updateUserDocument, updateLand, subscribeToUserSettings, updateUserSettings, deleteLand } from './lib/db';
 import { auth, storage } from './lib/firebase';
-import { onAuthStateChanged, signOut, updateProfile } from 'firebase/auth';
+import { onAuthStateChanged, signOut, updateProfile, User } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { themes } from './lib/themes';
 import Header from './components/Header';
@@ -15,11 +15,15 @@ import WeatherView from './components/WeatherView';
 import Modal from './components/Modal';
 import LoginView from './components/LoginView';
 import AppIntro from './components/AppIntro';
+import VerifyEmailView from './components/VerifyEmailView';
+
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 
 const App: React.FC = () => {
   const [showIntro, setShowIntro] = useState(false);
   const [activeTab, setActiveTab] = useState<NavTab>(NavTab.PANEL);
-  const [user, setUser] = useState<any>(null); // Firebase user
+  const [user, setUser] = useState<any>(null); // Firebase user (sadece e-postası doğrulanmış)
+  const [unverifiedUser, setUnverifiedUser] = useState<User | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
   const [isDeviceInfoModalOpen, setIsDeviceInfoModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -111,11 +115,17 @@ const App: React.FC = () => {
   // Firebase Auth listener
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      if (firebaseUser?.email) {
-        setUser({ email: firebaseUser.email, photoURL: firebaseUser.photoURL });
+      if (firebaseUser?.email && firebaseUser.emailVerified) {
+        setUnverifiedUser(null);
+        setUser({ uid: firebaseUser.uid, email: firebaseUser.email, photoURL: firebaseUser.photoURL });
         updateUserDocument(firebaseUser.email).catch(console.error);
+      } else if (firebaseUser?.email) {
+        // Doğrulanmamış hesap: kullanıcı verileri yüklenmez
+        setUser(null);
+        setUnverifiedUser(firebaseUser);
       } else {
         setUser(null);
+        setUnverifiedUser(null);
       }
       setIsInitializing(false);
     });
@@ -125,10 +135,15 @@ const App: React.FC = () => {
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !user?.email || !auth.currentUser) return;
+    if (!file.type.startsWith('image/') || file.size > MAX_PHOTO_BYTES) {
+      alert("Lütfen 5 MB'tan küçük bir resim dosyası seçin.");
+      return;
+    }
 
     try {
       setIsUploadingPhoto(true);
-      const storageRef = ref(storage, `profiles/${user.email}_${Date.now()}`);
+      // Dosya yolu e-posta yerine kullanıcı kimliğini içerir; Storage kuralları sadece sahibinin yazmasına izin verir
+      const storageRef = ref(storage, `profiles/${auth.currentUser.uid}/${Date.now()}`);
       await uploadBytes(storageRef, file);
       const downloadURL = await getDownloadURL(storageRef);
 
@@ -475,6 +490,20 @@ const App: React.FC = () => {
       <div className="min-h-screen bg-background-dark flex items-center justify-center">
         <div className="h-16 w-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
       </div>
+    );
+  }
+
+  if (unverifiedUser) {
+    return (
+      <VerifyEmailView
+        firebaseUser={unverifiedUser}
+        onVerified={() => {
+          setUser({ uid: unverifiedUser.uid, email: unverifiedUser.email, photoURL: unverifiedUser.photoURL });
+          updateUserDocument(unverifiedUser.email!).catch(console.error);
+          setUnverifiedUser(null);
+          setShowIntro(true);
+        }}
+      />
     );
   }
 
